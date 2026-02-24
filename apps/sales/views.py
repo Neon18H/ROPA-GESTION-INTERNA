@@ -2,15 +2,15 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Max, Q
+from django.db.models import F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
 
 from apps.common.mixins import RoleRequiredMixin, role_required
 from apps.customers.models import Customer
 from apps.inventory.models import KardexEntry, Stock, Variant
-from .forms import POSForm
-from .models import Sale, SaleItem
+from .forms import SaleForm, SaleItemFormSet
+from .models import Payment, Sale, SaleItem
 
 
 class SaleListView(RoleRequiredMixin, ListView):
@@ -31,38 +31,40 @@ def pos_view(request):
         variants = variants.filter(Q(product__sku__icontains=q) | Q(barcode__icontains=q) | Q(product__name__icontains=q))
 
     if request.method == 'POST':
-        form = POSForm(request.POST, organization=org)
-        items = []
-        rows = zip(
-            request.POST.getlist('variant_id'),
-            request.POST.getlist('qty'),
-            request.POST.getlist('unit_price'),
-            request.POST.getlist('discount'),
-        )
-        for variant_id, qty, unit_price, discount in rows:
-            if not variant_id:
-                continue
-            items.append(
-                {
-                    'variant': get_object_or_404(Variant, id=variant_id, product__organization=org),
-                    'qty': int(qty),
-                    'unit_price': Decimal(unit_price),
-                    'discount': Decimal(discount or '0'),
-                }
-            )
+        form = SaleForm(request.POST, organization=org)
+        formset = SaleItemFormSet(request.POST, prefix='items', form_kwargs={'organization': org})
 
-        if not items:
-            messages.error(request, 'Debes agregar al menos un ítem.')
-        elif form.is_valid():
-            allow_negative = request.user.role == 'ADMIN' and request.POST.get('allow_negative') == '1'
-            for item in items:
-                stock = Stock.objects.filter(variant=item['variant']).first()
-                current_stock = stock.quantity if stock else 0
-                if item['qty'] > current_stock and not allow_negative:
-                    messages.error(request, f"Stock insuficiente para {item['variant'].product.name}.")
-                    return redirect('sales:pos')
+        valid_items = []
+        if formset.is_valid():
+            for item_form in formset:
+                variant = item_form.cleaned_data.get('variant')
+                if not variant:
+                    continue
+                qty = item_form.cleaned_data.get('quantity')
+                unit_price = item_form.cleaned_data.get('unit_price')
+                if not qty or unit_price is None:
+                    continue
+                valid_items.append(
+                    {
+                        'variant': variant,
+                        'qty': qty,
+                        'unit_price': unit_price,
+                        'discount': item_form.cleaned_data.get('discount') or Decimal('0'),
+                    }
+                )
 
+        if not valid_items:
+            messages.error(request, 'Debe seleccionar al menos un producto variante válido.')
+        elif form.is_valid() and formset.is_valid():
             with transaction.atomic():
+                for item in valid_items:
+                    stock = Stock.objects.select_for_update().filter(variant=item['variant']).first()
+                    current_stock = stock.quantity if stock else 0
+                    if item['qty'] > current_stock:
+                        messages.error(request, f"Stock insuficiente para {item['variant'].product.name} {item['variant'].size}/{item['variant'].color}.")
+                        transaction.set_rollback(True)
+                        return redirect('sales:pos')
+
                 customer = form.cleaned_data['customer']
                 if not customer:
                     customer = Customer.objects.create(
@@ -87,7 +89,7 @@ def pos_view(request):
 
                 subtotal = Decimal('0')
                 discount_total = Decimal('0')
-                for item in items:
+                for item in valid_items:
                     line_total = (item['unit_price'] * item['qty']) - item['discount']
                     subtotal += item['unit_price'] * item['qty']
                     discount_total += item['discount']
@@ -99,26 +101,30 @@ def pos_view(request):
                         discount=item['discount'],
                         line_total=line_total,
                     )
-                    kardex = KardexEntry.objects.create(
+                    Stock.objects.filter(variant=item['variant']).update(quantity=F('quantity') - item['qty'])
+                    KardexEntry.objects.create(
                         organization=org,
                         variant=item['variant'],
                         type=KardexEntry.Type.OUT,
                         qty=item['qty'],
+                        unit_cost=0,
+                        note='Venta',
                         reference=f'sale:{sale.id}',
                         created_by=request.user,
                     )
-                    kardex.apply_to_stock()
 
                 sale.subtotal = subtotal
                 sale.discount_total = discount_total
                 sale.total = subtotal - discount_total
                 sale.save(update_fields=['subtotal', 'discount_total', 'total'])
+                Payment.objects.create(sale=sale, method=sale.payment_method, amount=sale.total, reference='POS')
             messages.success(request, f'Venta #{sale.number} registrada.')
             return redirect('sales:receipt', pk=sale.pk)
     else:
-        form = POSForm(organization=org)
+        form = SaleForm(organization=org)
+        formset = SaleItemFormSet(prefix='items', form_kwargs={'organization': org})
 
-    return render(request, 'sales/pos.html', {'form': form, 'variants': variants[:20], 'query': q})
+    return render(request, 'sales/pos.html', {'form': form, 'items_formset': formset, 'variants': variants[:20], 'query': q})
 
 
 class SaleReceiptView(RoleRequiredMixin, DetailView):
