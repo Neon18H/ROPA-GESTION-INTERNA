@@ -1,21 +1,63 @@
 {% extends 'base.html' %}
-{% block page_title %}Inventario & Kardex{% endblock %}
+{% block title %}Inventario & Kardex{% endblock %}
 {% block content %}
-<div class="card mb-3"><div class="card-body"><form method="post" class="row g-2">{% csrf_token %}
-  <div class="col-md-4">{{ movement_form.variant }}</div>
-  <div class="col-md-2">{{ movement_form.qty }}</div>
-  <div class="col-md-2">{{ movement_form.movement_type }}</div>
-  <div class="col-md-2">{{ movement_form.unit_cost }}</div>
-  <div class="col-md-2"><button class="btn btn-primary btn-sm w-100">Aplicar</button></div>
-</form></div></div>
-<div class="card">
-  <div class="card-header d-flex justify-content-between"><span>Inventario</span><span class="badge bg-danger-lt">Bajo stock: {{ low_stock_count }}</span></div>
+<div class="card mb-4">
   <div class="card-body">
-    <table id="inventoryTable" class="table table-sm">
-      <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th>Stock</th></tr></thead>
-      <tbody>{% for v in variants %}<tr><td>{{ v.product.sku }}</td><td>{{ v.product.name }}</td><td>{{ v.size }} / {{ v.color }}</td><td>{{ v.stock.quantity|default:0 }}</td></tr>{% endfor %}</tbody>
-    </table>
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
+      <div>
+        <h1 class="h5 mb-1">Inventario operativo</h1>
+        <p class="text-secondary mb-0">Controla entradas y salidas de stock por variante.</p>
+      </div>
+      <span class="badge text-bg-light border"><i class="bi bi-exclamation-triangle me-1 text-danger"></i>Bajo stock: {{ low_stock_count }}</span>
+    </div>
+
+    <form method="post" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <div class="col-12 col-lg-4">{{ movement_form.variant }}</div>
+      <div class="col-6 col-lg-2">{{ movement_form.qty }}</div>
+      <div class="col-6 col-lg-2">{{ movement_form.movement_type }}</div>
+      <div class="col-12 col-lg-2">{{ movement_form.unit_cost }}</div>
+      <div class="col-12 col-lg-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-check2-circle me-2"></i>Aplicar</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table enterprise-table align-middle mb-0">
+        <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Producto</th>
+          <th>Variante</th>
+          <th class="text-end">Stock</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for v in variants %}
+          {% with qty=v.stock.quantity|default:0 %}
+          <tr>
+            <td class="fw-semibold">{{ v.product.sku }}</td>
+            <td>{{ v.product.name }}</td>
+            <td>{{ v.size }} / {{ v.color }}</td>
+            <td class="text-end">
+              {% if qty <= 3 %}
+                <span class="badge badge-stock badge-stock-critical"><i class="bi bi-exclamation-octagon"></i>{{ qty }}</span>
+              {% elif qty <= 8 %}
+                <span class="badge badge-stock badge-stock-low"><i class="bi bi-exclamation-circle"></i>{{ qty }}</span>
+              {% else %}
+                <span class="badge badge-stock badge-stock-ok"><i class="bi bi-check-circle"></i>{{ qty }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="4" class="text-center py-5 text-secondary">No hay variantes registradas aún.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}
-{% block extra_js %}<script>$(function(){ $('#inventoryTable').DataTable(); });</script>{% endblock %}
