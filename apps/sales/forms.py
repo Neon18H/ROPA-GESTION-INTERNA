@@ -1,14 +1,14 @@
 from django import forms
+from django.forms import formset_factory
 
 from apps.customers.models import Customer
 from apps.inventory.models import Variant
 from .models import Sale
 
 
-class POSForm(forms.Form):
+class SaleForm(forms.Form):
     customer = forms.ModelChoiceField(queryset=Customer.objects.none(), required=False, label='Cliente existente')
     payment_method = forms.ChoiceField(choices=Sale.PaymentMethod.choices, initial=Sale.PaymentMethod.CASH)
-    search = forms.CharField(required=False, label='Buscar SKU/Barcode/Nombre')
 
     customer_name = forms.CharField(required=False, label='Nombre cliente')
     customer_phone = forms.CharField(required=False, label='Teléfono')
@@ -30,12 +30,15 @@ class POSForm(forms.Form):
         return cleaned
 
 
-class POSItemForm(forms.Form):
-    variant = forms.ModelChoiceField(queryset=Variant.objects.none())
-    qty = forms.IntegerField(min_value=1)
-    unit_price = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12)
+class SaleItemForm(forms.Form):
+    variant = forms.ModelChoiceField(queryset=Variant.objects.none(), required=False)
+    quantity = forms.IntegerField(min_value=1, required=False)
+    unit_price = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False)
     discount = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, initial=0)
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['variant'].queryset = Variant.objects.filter(product__organization=organization, is_active=True)
+
+
+SaleItemFormSet = formset_factory(SaleItemForm, extra=0)

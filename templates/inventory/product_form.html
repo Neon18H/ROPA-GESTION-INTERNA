@@ -14,6 +14,23 @@
       <div class="col-md-3">{{ form.initial_cost.label_tag }}{{ form.initial_cost }}{% if form.initial_cost.help_text %}<div class="form-text">{{ form.initial_cost.help_text }}</div>{% endif %}</div>
       <div class="col-md-3 d-flex align-items-end"><div class="form-check">{{ form.is_active }} {{ form.is_active.label_tag }}</div></div>
     </div>
+
+    <hr>
+    <h6>Variantes (talla/color/género/código de barras)</h6>
+    {{ variant_formset.management_form }}
+    <div id="variantRows" class="d-flex flex-column gap-2">
+      {% for vform in variant_formset %}
+      <div class="row g-2 align-items-end border rounded p-2">
+        <div class="col-md-3">{{ vform.size.label_tag }}{{ vform.size }}</div>
+        <div class="col-md-3">{{ vform.color.label_tag }}{{ vform.color }}</div>
+        <div class="col-md-3">{{ vform.gender.label_tag }}{{ vform.gender }}</div>
+        <div class="col-md-3">{{ vform.barcode.label_tag }}{{ vform.barcode }}</div>
+        {% if vform.DELETE %}<div class="col-12"><div class="form-check">{{ vform.DELETE }} {{ vform.DELETE.label_tag }}</div></div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="text-muted small mt-2 mb-0">Si no agregas variantes se creará una por defecto: UNICA/UNICO/UNISEX.</p>
+
     <div class="d-flex gap-2 mt-3"><button class="btn btn-dark btn-sm">Guardar</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button></div>
   </form>
 </div>

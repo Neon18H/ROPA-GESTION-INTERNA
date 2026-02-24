@@ -30,8 +30,9 @@
         </div>
         <hr>
         {{ form.payment_method.label_tag }}{{ form.payment_method }}
-        {% if request.user.role == 'ADMIN' %}<div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="allow_negative" value="1" id="allowNeg"><label for="allowNeg" class="form-check-label">Permitir stock negativo (admin)</label></div>{% endif %}
-        <table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Desc</th></tr></thead><tbody></tbody></table>
+
+        {{ items_formset.management_form }}
+        <table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Desc</th><th></th></tr></thead><tbody></tbody></table>
       </div>
       <div class="card-footer text-end"><button class="btn btn-success">Confirmar venta</button></div>
     </form>
@@ -40,9 +41,41 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-$('.add-item').on('click', function(){
-  const id=$(this).data('id'), name=$(this).data('name');
-  $('#itemsTable tbody').append(`<tr><td>${name}<input type='hidden' name='variant_id' value='${id}'></td><td><input class='form-control' type='number' name='qty' value='1' min='1'></td><td><input class='form-control' type='number' name='unit_price' value='0' step='0.01'></td><td><input class='form-control' type='number' name='discount' value='0' step='0.01'></td></tr>`)
+const tableBody = document.querySelector('#itemsTable tbody');
+const totalFormsInput = document.querySelector('#id_items-TOTAL_FORMS');
+
+function bindRowEvents(row) {
+  row.querySelector('.remove-item').addEventListener('click', function(){
+    row.remove();
+    reindexRows();
+  });
+}
+
+function reindexRows(){
+  const rows = [...tableBody.querySelectorAll('tr')];
+  rows.forEach((row, idx) => {
+    row.querySelectorAll('input').forEach(input => {
+      const field = input.dataset.field;
+      input.name = `items-${idx}-${field}`;
+      input.id = `id_items-${idx}-${field}`;
+    });
+  });
+  totalFormsInput.value = rows.length;
+}
+
+document.querySelectorAll('.add-item').forEach(btn => {
+  btn.addEventListener('click', function(){
+    const idx = tableBody.querySelectorAll('tr').length;
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${this.dataset.name}<input type='hidden' data-field='variant' name='items-${idx}-variant' value='${this.dataset.id}'></td>
+      <td><input class='form-control' data-field='quantity' type='number' name='items-${idx}-quantity' value='1' min='1'></td>
+      <td><input class='form-control' data-field='unit_price' type='number' name='items-${idx}-unit_price' value='${this.dataset.price}' step='0.01'></td>
+      <td><input class='form-control' data-field='discount' type='number' name='items-${idx}-discount' value='0' step='0.01'></td>
+      <td><button type='button' class='btn btn-sm btn-outline-danger remove-item'>×</button></td>`;
+    tableBody.appendChild(row);
+    bindRowEvents(row);
+    reindexRows();
+  })
 });
 </script>
 {% endblock %}

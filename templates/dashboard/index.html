@@ -7,16 +7,16 @@
 {% endblock %}
 {% block content %}
 <div class="row g-3 mb-4">
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy</small><h3 data-kpi="{{ ventas_hoy }}">0</h3><i class="fa-solid fa-calendar-day"></i></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes</small><h3 data-kpi="{{ ventas_mes }}">0</h3><i class="fa-solid fa-coins"></i></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Inventario</small><h3 data-kpi="{{ inventario_valorizado }}">0</h3><i class="fa-solid fa-warehouse"></i></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Stock bajo</small><h3 data-kpi="{{ stock_bajo }}">0</h3><i class="fa-solid fa-triangle-exclamation"></i></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy (monto)</small><h3>{{ sales_today_total|default:0 }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes (monto)</small><h3>{{ sales_month_total|default:0 }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy (cantidad)</small><h3>{{ sales_today_count|default:0 }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Stock bajo</small><h3>{{ low_stock_count|default:0 }}</h3></div></div></div>
 </div>
 <div class="row g-3">
-  <div class="col-xl-8"><div class="card glass-card"><div class="card-header border-0"><h3 class="card-title">Ventas últimos 30 días</h3></div><div class="card-body"><canvas id="sales30Chart" height="120"></canvas></div></div></div>
-  <div class="col-xl-4"><div class="card glass-card"><div class="card-header border-0"><h3 class="card-title">Top productos</h3></div><div class="card-body p-0">
-    <table class="table table-hover mb-0 data-table-saas"><thead><tr><th>SKU</th><th>Producto</th></tr></thead><tbody>
-      {% for p in top_productos %}<tr><td>{{ p.sku }}</td><td>{{ p.name }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center py-4"><i class="fa-regular fa-face-smile me-1"></i>No hay productos destacados aún.</td></tr>{% endfor %}
+  <div class="col-xl-6"><div class="card glass-card"><div class="card-header border-0"><h3 class="card-title">Valor de inventario</h3></div><div class="card-body"><h4>{{ inventory_value|default:0 }}</h4></div></div></div>
+  <div class="col-xl-6"><div class="card glass-card"><div class="card-header border-0"><h3 class="card-title">Top productos</h3></div><div class="card-body p-0">
+    <table class="table table-hover mb-0 data-table-saas"><thead><tr><th>Producto</th><th>Cant.</th></tr></thead><tbody>
+      {% for p in top_products %}<tr><td>{{ p.variant__product__name }}</td><td>{{ p.qty }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center py-4">No hay ventas todavía.</td></tr>{% endfor %}
     </tbody></table>
   </div></div></div>
 </div>

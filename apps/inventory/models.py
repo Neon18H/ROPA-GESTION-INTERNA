@@ -59,6 +59,15 @@ class KardexEntry(OrganizationScopedModel):
     reference = models.CharField(max_length=80, blank=True)
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
 
+
+    @property
+    def movement_type(self):
+        return self.type
+
+    @property
+    def quantity(self):
+        return self.qty
+
     def apply_to_stock(self):
         stock, _ = Stock.objects.get_or_create(variant=self.variant)
         if self.type == self.Type.IN:

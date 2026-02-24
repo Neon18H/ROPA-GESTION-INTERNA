@@ -7,6 +7,8 @@ from .views import (
     categories_view,
     import_products,
     inventory_view,
+    StockInView,
+    KardexInView,
     quick_create_brand,
     quick_create_category,
 )
@@ -21,5 +23,7 @@ urlpatterns = [
     path('catalogs/category/quick-create/', quick_create_category, name='quick_category_create'),
     path('catalogs/brand/quick-create/', quick_create_brand, name='quick_brand_create'),
     path('', inventory_view, name='inventory'),
+    path('stock-in/<int:variant_id>/', StockInView.as_view(), name='stock_in'),
+    path('kardex/in/<int:variant_id>/', KardexInView.as_view(), name='kardex_in'),
     path('import/', import_products, name='import'),
 ]
