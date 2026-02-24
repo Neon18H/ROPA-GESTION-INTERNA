@@ -18,6 +18,28 @@ class ProductForm(forms.ModelForm):
         self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
 
+        if self.instance and self.instance.pk:
+            self.fields['initial_qty'].required = False
+            self.fields['initial_cost'].required = False
+            self.fields['initial_qty'].disabled = True
+            self.fields['initial_cost'].disabled = True
+            self.fields['initial_qty'].help_text = 'Solo creación.'
+            self.fields['initial_cost'].help_text = 'Solo creación.'
+
+    def clean_sku(self):
+        sku = (self.cleaned_data.get('sku') or '').strip()
+        if not sku or not self.organization:
+            return sku
+
+        sku_exists = Product.objects.filter(organization=self.organization, sku=sku)
+        if self.instance and self.instance.pk:
+            sku_exists = sku_exists.exclude(pk=self.instance.pk)
+
+        if sku_exists.exists():
+            raise forms.ValidationError('Ya existe un producto con este SKU en la organización actual.')
+
+        return sku
+
     def clean(self):
         cleaned_data = super().clean()
         initial_qty = cleaned_data.get('initial_qty') or 0

@@ -127,12 +127,15 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
     success_url = reverse_lazy('inventory:products')
     allowed_roles = ('ADMIN', 'BODEGA')
 
+    def _get_request_organization(self):
+        return getattr(self.request, 'organization', None) or self.request.user.organization
+
     def get_queryset(self):
-        return Product.objects.filter(organization=self.request.user.organization)
+        return Product.objects.filter(organization=self._get_request_organization())
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self.request.user.organization
+        kwargs['organization'] = self._get_request_organization()
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -151,7 +154,11 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
             return self.form_invalid(form)
 
         with transaction.atomic():
-            self.object = form.save()
+            obj = form.save(commit=False)
+            obj.organization = self._get_request_organization()
+            obj.save()
+            form.save_m2m()
+            self.object = obj
             self.object.variant_set.all().delete()
             created = 0
             for entry in variant_formset.cleaned_data:
