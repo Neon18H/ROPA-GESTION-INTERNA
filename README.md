@@ -14,8 +14,8 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 - `DATABASE_URL`
 - `SECRET_KEY`
 - `DEBUG`
-- `ALLOWED_HOSTS`
-- `CSRF_TRUSTED_ORIGINS`
+- `ALLOWED_HOSTS=ropa-gestion-interna-production.up.railway.app`
+- `CSRF_TRUSTED_ORIGINS=https://ropa-gestion-interna-production.up.railway.app`
 
 ## Comandos
 ```bash

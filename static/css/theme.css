@@ -1,0 +1,27 @@
+:root {
+  --bg: #0b1220;
+  --card: rgba(17, 24, 39, 0.82);
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --primary: #3b82f6;
+}
+body { font-family: Inter, system-ui, sans-serif; background: radial-gradient(circle at top, #172554, #030712 55%); color: var(--text); }
+.content-wrapper { background: transparent; }
+.glass-navbar { background: rgba(17, 24, 39, 0.88); backdrop-filter: blur(6px); }
+.premium-sidebar { background: linear-gradient(180deg, #111827 0%, #020617 100%); }
+.side-section-title { color: #6b7280; text-transform: uppercase; font-size: .72rem; margin: .5rem 1rem; letter-spacing: .08em; }
+.nav-sidebar .nav-link { border-radius: 10px; margin: 2px 8px; }
+.nav-sidebar .nav-link:hover { background: rgba(59, 130, 246, 0.18); }
+.glass-card { background: var(--card); border-radius: 16px; box-shadow: 0 12px 35px rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.06); }
+.kpi-card .card-body { position: relative; overflow: hidden; }
+.kpi-card h3 { font-size: 2rem; margin: .4rem 0 0; }
+.kpi-card i { position: absolute; right: 1rem; top: 1rem; opacity: .35; font-size: 1.6rem; }
+.breadcrumb { background: transparent; margin-bottom: 0; }
+.breadcrumb a { color: #93c5fd; }
+.table-dark { --bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,.02); }
+.badge { border-radius: 999px; }
+.org-pill { background: rgba(59,130,246,.18); border: 1px solid rgba(59,130,246,.4); border-radius: 99px; padding: .3rem .8rem; }
+.auth-cinema { min-height: 100vh; background: linear-gradient(135deg, #020617 0%, #1e3a8a 48%, #312e81 100%); }
+.auth-cinema .glass-card { background: rgba(15, 23, 42, 0.84); }
+.card, .btn, .form-control, .form-select { transition: all .2s ease; }
+.btn-primary { background: linear-gradient(90deg, #2563eb, #4f46e5); border: 0; }
