@@ -1,53 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}Inventario{% endblock %}
 {% block page_title %}Inventario & Kardex{% endblock %}
 {% block content %}
-<div class="card mb-3">
-  <div class="card-body">
-    <form class="row g-2" method="get">
-      <div class="col-md-3"><select name="category" class="form-select"><option value="">Categoría</option>{% for c in categories %}<option value="{{ c.id }}" {% if selected_category == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-      <div class="col-md-3"><select name="brand" class="form-select"><option value="">Marca</option>{% for b in brands %}<option value="{{ b.id }}" {% if selected_brand == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select></div>
-      <div class="col-md-2 form-check mt-2 ms-2"><input class="form-check-input" type="checkbox" name="low_stock" value="1" {% if low_stock %}checked{% endif %}><label class="form-check-label">Stock bajo</label></div>
-      <div class="col-md-3"><button class="btn btn-primary"><i class="fas fa-filter me-1"></i>Filtrar</button></div>
-    </form>
-  </div>
-</div>
+<div class="card mb-3"><div class="card-body"><form method="post" class="row g-2">{% csrf_token %}
+  <div class="col-md-4">{{ movement_form.variant }}</div>
+  <div class="col-md-2">{{ movement_form.qty }}</div>
+  <div class="col-md-2">{{ movement_form.movement_type }}</div>
+  <div class="col-md-2">{{ movement_form.unit_cost }}</div>
+  <div class="col-md-2"><button class="btn btn-primary btn-sm w-100">Aplicar</button></div>
+</form></div></div>
 <div class="card">
-  <div class="card-header d-flex justify-content-between"><h3 class="card-title">Inventario</h3><span class="badge bg-danger">Bajo stock: {{ low_stock_count }}</span></div>
+  <div class="card-header d-flex justify-content-between"><span>Inventario</span><span class="badge bg-danger-lt">Bajo stock: {{ low_stock_count }}</span></div>
   <div class="card-body">
-    <table id="inventoryTable" class="table table-bordered table-hover">
-      <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th>Stock</th><th>Estado</th><th>Ajuste rápido</th></tr></thead>
-      <tbody>
-      {% for v in variants %}
-      <tr>
-        <td>{{ v.product.sku }}</td>
-        <td>{{ v.product.name }}</td>
-        <td>{{ v.size }} / {{ v.color }}</td>
-        <td>{{ v.stock.quantity|default:0 }}</td>
-        <td>{% if v.stock.quantity|default:0 <= v.stock.min_alert|default:0 %}<span class="badge bg-danger">Bajo</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
-        <td>
-          <form method="post" class="d-flex gap-2">{% csrf_token %}
-            <input type="hidden" name="variant_id" value="{{ v.id }}">
-            <input type="number" name="adjust_qty" class="form-control form-control-sm" value="1" style="max-width:90px;">
-            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-sliders"></i></button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-<div class="card mt-3">
-  <div class="card-header"><h3 class="card-title">Kardex reciente</h3></div>
-  <div class="card-body">
-    <table class="table table-sm">
-      <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cant</th><th>Ref</th></tr></thead>
-      <tbody>{% for k in kardex_entries %}<tr><td>{{ k.created_at|date:'Y-m-d H:i' }}</td><td>{{ k.type }}</td><td>{{ k.variant.product.name }}</td><td>{{ k.qty }}</td><td>{{ k.reference }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted">Sin movimientos.</td></tr>{% endfor %}</tbody>
+    <table id="inventoryTable" class="table table-sm">
+      <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th>Stock</th></tr></thead>
+      <tbody>{% for v in variants %}<tr><td>{{ v.product.sku }}</td><td>{{ v.product.name }}</td><td>{{ v.size }} / {{ v.color }}</td><td>{{ v.stock.quantity|default:0 }}</td></tr>{% endfor %}</tbody>
     </table>
   </div>
 </div>
 {% endblock %}
-{% block extra_js %}
-<script>$(function(){ $('#inventoryTable').DataTable(); });</script>
-{% endblock %}
+{% block extra_js %}<script>$(function(){ $('#inventoryTable').DataTable(); });</script>{% endblock %}

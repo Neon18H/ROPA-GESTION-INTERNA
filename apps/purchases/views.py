@@ -1,15 +1,17 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Max
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
 
 from apps.common.mixins import RoleRequiredMixin, role_required
-from apps.inventory.models import KardexEntry
-from .forms import PurchaseOrderForm
-from .models import PurchaseItem, PurchaseOrder
+from .forms import PurchaseOrderForm, SupplierForm
+from .models import PurchaseItem, PurchaseOrder, Supplier
+from .services import receive_purchase
 
 
 class PurchaseListView(RoleRequiredMixin, ListView):
@@ -64,7 +66,8 @@ def purchase_create_view(request):
         form = PurchaseOrderForm(organization=org)
 
     from apps.inventory.models import Variant
-    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product')[:25]
+
+    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product')[:50]
     return render(request, 'purchases/purchase_form.html', {'form': form, 'variants': variants})
 
 
@@ -84,20 +87,24 @@ def purchase_receive_view(request, pk):
         messages.warning(request, 'Solo se pueden recibir compras en estado borrador.')
         return redirect('purchases:detail', pk=pk)
 
-    with transaction.atomic():
-        for item in purchase.items.all():
-            kardex = KardexEntry.objects.create(
-                organization=purchase.organization,
-                variant=item.variant,
-                type=KardexEntry.Type.IN,
-                qty=item.qty,
-                unit_cost=item.unit_cost,
-                reference=f'purchase:{purchase.id}',
-                created_by=request.user,
-            )
-            kardex.apply_to_stock()
-        purchase.status = PurchaseOrder.Status.RECEIVED
-        purchase.save(update_fields=['status'])
-
-    messages.success(request, 'Compra recibida e inventario actualizado con método de último costo.')
+    receive_purchase(purchase, request.user)
+    messages.success(request, 'Compra recibida e inventario actualizado.')
     return redirect('purchases:detail', pk=pk)
+
+
+@role_required('ADMIN', 'BODEGA')
+def suppliers_view(request):
+    suppliers = Supplier.objects.filter(organization=request.user.organization).order_by('name')
+    return render(request, 'purchases/supplier_list.html', {'suppliers': suppliers, 'form': SupplierForm()})
+
+
+@login_required
+def quick_create_supplier(request):
+    if request.method == 'POST':
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            supplier = form.save(commit=False)
+            supplier.organization = request.user.organization
+            supplier.save()
+            return JsonResponse({'ok': True, 'id': supplier.id, 'name': supplier.name})
+    return JsonResponse({'ok': False}, status=400)

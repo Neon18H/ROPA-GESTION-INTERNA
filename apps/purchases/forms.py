@@ -1,7 +1,7 @@
 from django import forms
 
 from apps.inventory.models import Variant
-from .models import PurchaseOrder, Supplier
+from .models import Supplier
 
 
 class PurchaseOrderForm(forms.Form):
@@ -20,3 +20,9 @@ class PurchaseItemInlineForm(forms.Form):
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['variant'].queryset = Variant.objects.filter(product__organization=organization, is_active=True)
+
+
+class SupplierForm(forms.ModelForm):
+    class Meta:
+        model = Supplier
+        fields = ['name', 'phone', 'email', 'address', 'notes']

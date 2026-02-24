@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block page_title %}Catálogos{% endblock %}
+{% block content %}
+<div class="row g-3">
+<div class="col-md-6"><div class="card"><div class="card-header">Categorías</div><div class="card-body"><ul>{% for c in categories %}<li>{{ c.name }}</li>{% endfor %}</ul></div></div></div>
+<div class="col-md-6"><div class="card"><div class="card-header">Marcas</div><div class="card-body"><ul>{% for b in brands %}<li>{{ b.name }}</li>{% endfor %}</ul></div></div></div>
+</div>
+{% endblock %}

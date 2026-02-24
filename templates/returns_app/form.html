@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block page_title %}Nueva devolución{% endblock %}
+{% block content %}
+<form method="post" class="card">{% csrf_token %}
+<div class="card-body">{{ form.as_p }}
+<table class="table" id="returnItems"><thead><tr><th>Variante</th><th>Cantidad</th><th>Acción</th></tr></thead><tbody></tbody></table>
+<div class="list-group">{% for v in variants %}<button type="button" class="list-group-item add-return" data-id="{{ v.id }}" data-name="{{ v.product.name }} {{ v.size }}/{{ v.color }}">{{ v.product.name }} {{ v.size }}/{{ v.color }}</button>{% endfor %}</div>
+</div>
+<div class="card-footer text-end"><button class="btn btn-primary btn-sm">Guardar</button></div>
+</form>
+{% endblock %}
+{% block extra_js %}<script>
+$('.add-return').on('click', function(){const id=$(this).data('id'), name=$(this).data('name'); $('#returnItems tbody').append(`<tr><td>${name}<input type='hidden' name='variant_id' value='${id}'></td><td><input class='form-control form-control-sm' type='number' name='qty' value='1' min='1'></td><td><select name='action' class='form-select form-select-sm'><option value='RESTOCK'>RESTOCK</option><option value='DAMAGED'>DAMAGED</option></select></td></tr>`);});
+</script>{% endblock %}
