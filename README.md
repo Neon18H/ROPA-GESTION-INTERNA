@@ -6,9 +6,9 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 - Multi-tenant por `Organization` y `User.organization`.
 - Roles: `ADMIN`, `GERENTE`, `VENDEDOR`, `BODEGA`.
 - Módulos: inventario, ventas, clientes, compras, finanzas, promociones, devoluciones, reportes, settings.
-- Dashboard con KPIs y layout Bootstrap 5 estilo admin.
+- UI SaaS Enterprise responsive con Bootstrap 5.3.3, Bootstrap Icons e Inter.
 - PostgreSQL only (sin SQLite).
-- Deploy listo para Railway.
+- Deploy listo para Railway con arranque idempotente.
 
 ## Variables de entorno (Railway)
 - `DATABASE_URL`
@@ -17,8 +17,24 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 - `ALLOWED_HOSTS=ropa-gestion-interna-production.up.railway.app`
 - `CSRF_TRUSTED_ORIGINS=https://ropa-gestion-interna-production.up.railway.app`
 - `DJANGO_SETTINGS_MODULE=gestion_ropa.settings`
+- `WHITENOISE_USE_FINDERS=False` (fallback opcional, activar solo si Railway no ejecuta `collectstatic`)
 
-## Comandos
+## Arranque en Railway (fix definitivo de estáticos)
+El proceso `web` usa `start.sh` y ejecuta siempre:
+
+1. `mkdir -p /app/staticfiles`
+2. `python manage.py migrate`
+3. `python manage.py collectstatic --noinput`
+4. `gunicorn gestion_ropa.wsgi:application --bind 0.0.0.0:$PORT --log-level info --access-logfile -`
+
+`Procfile`:
+
+```procfile
+release: DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py migrate && DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py collectstatic --noinput
+web: bash start.sh
+```
+
+## Comandos locales
 ```bash
 python manage.py migrate
 python manage.py collectstatic --noinput
@@ -27,21 +43,18 @@ python manage.py seed_demo
 ```
 
 ## Verificación de estáticos en producción
-Con `DJANGO_SETTINGS_MODULE=gestion_ropa.settings` activo, valida:
-
-```bash
-python manage.py findstatic css/theme.css -v 2
-python manage.py collectstatic --noinput
-```
-
-En runtime (app desplegada), confirma que WhiteNoise está sirviendo archivos estáticos correctamente:
+Con la app desplegada, validar headers reales:
 
 ```bash
 curl -I https://<tu-dominio>/static/css/theme.css
 curl -I https://<tu-dominio>/static/js/app.js
 ```
 
-Las respuestas deben ser `HTTP/1.1 200 OK`. Para `theme.css`, el header `Content-Type` debe ser `text/css` (no `text/html`).
+Resultados esperados:
+- `/static/css/theme.css` -> `HTTP/1.1 200 OK` y `Content-Type: text/css`
+- `/static/js/app.js` -> `HTTP/1.1 200 OK` y `Content-Type: application/javascript`
+
+Si responde `text/html` o `404`, el proceso web no está ejecutando `collectstatic` o está usando otra imagen/instancia.
 
 ## Credenciales demo local
 - Usuario sugerido: `admin`
@@ -60,9 +73,3 @@ Las respuestas deben ser `HTTP/1.1 200 OK`. Para `theme.css`, el header `Content
 - `/promotions/`
 - `/returns/`
 - `/settings/`
-
-## Deploy Railway
-1. Conecta repo en Railway.
-2. Define variables de entorno.
-3. Deploy command: `DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py migrate && DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py collectstatic --noinput`.
-4. Start command: `DJANGO_SETTINGS_MODULE=gestion_ropa.settings gunicorn gestion_ropa.wsgi:application`.

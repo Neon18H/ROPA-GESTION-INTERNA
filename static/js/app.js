@@ -26,4 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
       link.addEventListener('click', () => offcanvas.hide());
     });
   }
+
+  const topbarSearch = document.querySelector('.topbar-search input[type="search"]');
+  if (topbarSearch) {
+    topbarSearch.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        topbarSearch.value = '';
+        topbarSearch.blur();
+      }
+    });
+  }
 });
