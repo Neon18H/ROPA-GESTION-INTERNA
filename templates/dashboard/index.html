@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card kpi-card p-3"><small>Ventas Hoy</small><h3>{{ ventas_hoy }}</h3></div></div>
+  <div class="col-md-4"><div class="card kpi-card p-3"><small>Ticket Promedio</small><h3>{{ ticket_promedio }}</h3></div></div>
+  <div class="col-md-4"><div class="card kpi-card p-3"><small>Stock Bajo</small><h3>{{ stock_bajo }}</h3></div></div>
+</div>
+<canvas id="kpiChart" height="80"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
