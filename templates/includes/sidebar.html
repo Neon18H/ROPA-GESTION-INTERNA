@@ -1,19 +1,20 @@
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="logo-dot"></div>
+<aside class="saas-sidebar">
+  <div class="sidebar-brand px-3">
+    <div class="brand-mark">R</div>
     <div>
-      <strong>ROPA Cloud</strong>
-      <small class="d-block text-secondary">Enterprise</small>
+      <h6 class="mb-0">ROPA Cloud</h6>
+      <small>Enterprise Suite</small>
     </div>
   </div>
-  <nav class="nav flex-column gap-1">
-    <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}"><i class="bi bi-grid"></i>Dashboard</a>
-    <a class="nav-link {% if request.resolver_match.app_name == 'inventory' %}active{% endif %}" href="{% url 'inventory:inventory' %}"><i class="bi bi-box-seam"></i>Inventario</a>
-    <a class="nav-link" href="{% url 'inventory:products' %}"><i class="bi bi-tags"></i>Catálogo</a>
-    <a class="nav-link" href="{% url 'inventory:categories' %}"><i class="bi bi-bookmark"></i>Categorías</a>
-    <a class="nav-link" href="{% url 'inventory:brands' %}"><i class="bi bi-award"></i>Marcas</a>
-    <a class="nav-link {% if request.resolver_match.app_name == 'purchases' %}active{% endif %}" href="{% url 'purchases:list' %}"><i class="bi bi-bag"></i>Compras</a>
-    <a class="nav-link {% if request.resolver_match.app_name == 'returns' %}active{% endif %}" href="{% url 'returns:list' %}"><i class="bi bi-arrow-counterclockwise"></i>Devoluciones</a>
-    <a class="nav-link" href="{% url 'accounts:user_list' %}"><i class="bi bi-people"></i>Usuarios</a>
+
+  <nav class="nav flex-column sidebar-nav mt-4">
+    <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'inventory' %}active{% endif %}" href="{% url 'inventory:inventory' %}"><i class="bi bi-box-seam"></i><span>Inventario</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'sales' %}active{% endif %}" href="{% url 'sales:list' %}"><i class="bi bi-cart3"></i><span>Ventas</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'purchases' %}active{% endif %}" href="{% url 'purchases:list' %}"><i class="bi bi-bag-check"></i><span>Compras</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'customers' %}active{% endif %}" href="{% url 'customers:list' %}"><i class="bi bi-people"></i><span>Clientes</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'finance' %}active{% endif %}" href="{% url 'finance:summary' %}"><i class="bi bi-cash-coin"></i><span>Finanzas</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}" href="{% url 'reports:index' %}"><i class="bi bi-bar-chart"></i><span>Reportes</span></a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'settings_app' %}active{% endif %}" href="{% url 'settings_app:index' %}"><i class="bi bi-gear"></i><span>Configuración</span></a>
   </nav>
 </aside>

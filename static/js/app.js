@@ -1,9 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.toast').forEach((el) => bootstrap.Toast.getOrCreateInstance(el).show());
-  if (window.jQuery && document.getElementById('inventoryTable')) {
-    window.jQuery('#inventoryTable').DataTable({
-      pageLength: 15,
-      language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' }
+  document.querySelectorAll('.toast').forEach((el) => {
+    bootstrap.Toast.getOrCreateInstance(el).show();
+  });
+
+  document.querySelectorAll('[data-inline-edit]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const targetId = button.getAttribute('data-inline-edit');
+      const row = document.getElementById(targetId);
+      if (!row) return;
+      row.classList.toggle('d-none');
     });
-  }
+  });
 });
