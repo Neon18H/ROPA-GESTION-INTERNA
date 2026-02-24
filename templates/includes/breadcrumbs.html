@@ -1,6 +1,15 @@
-<nav aria-label="breadcrumb" class="mb-3">
-  <ol class="breadcrumb app-breadcrumb mb-0">
-    <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
-    {% block breadcrumbs %}{% endblock %}
-  </ol>
-</nav>
+<section class="mb-4">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
+    <div>
+      <h1 class="h4 mb-1">{% block page_title %}Panel{% endblock %}</h1>
+      {% block page_subtitle %}{% endblock %}
+    </div>
+    {% block page_actions %}{% endblock %}
+  </div>
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
+      {% block breadcrumbs %}{% endblock %}
+    </ol>
+  </nav>
+</section>
