@@ -1,3 +1,6 @@
-body { background:#f4f6f9; }
-.sidebar { width: 240px; min-height: 100vh; }
-.kpi-card { border: 0; border-left: 4px solid #0d6efd; box-shadow:0 4px 12px rgba(0,0,0,.08); }
+body { font-family: 'Inter', system-ui, sans-serif; background: #f4f6f9; }
+.content-wrapper { background: #f4f6f9; min-height: 100vh; }
+.small-box .icon { top: 10px; }
+.table td, .table th { vertical-align: middle; }
+.auth-page { background: linear-gradient(135deg,#1f2937,#111827); min-height: 100vh; }
+.auth-page .card { border: 0; border-radius: 12px; }

@@ -1,10 +1,11 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
+
+from apps.common.mixins import OrganizationRequiredMixin
 from apps.sales.models import Sale
 from .models import Expense
 
 
-class FinanceSummaryView(LoginRequiredMixin, TemplateView):
+class FinanceSummaryView(OrganizationRequiredMixin, TemplateView):
     template_name = 'finance/summary.html'
 
     def get_context_data(self, **kwargs):

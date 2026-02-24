@@ -1,9 +1,10 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
+
+from apps.common.mixins import OrganizationRequiredMixin
 from .models import Sale
 
 
-class SaleListView(LoginRequiredMixin, ListView):
+class SaleListView(OrganizationRequiredMixin, ListView):
     model = Sale
     template_name = 'sales/sale_list.html'
 

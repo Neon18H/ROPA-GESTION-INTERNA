@@ -1,9 +1,10 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
+
+from apps.common.mixins import OrganizationRequiredMixin
 from .models import Promotion
 
 
-class PromotionListView(LoginRequiredMixin, ListView):
+class PromotionListView(OrganizationRequiredMixin, ListView):
     model = Promotion
     template_name = 'promotions/list.html'
 
