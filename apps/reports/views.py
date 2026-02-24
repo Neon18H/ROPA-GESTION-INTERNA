@@ -1,8 +1,8 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
-from apps.common.mixins import OrganizationRequiredMixin
+from apps.common.mixins import RoleRequiredMixin
 
 
-class ReportsView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateView):
+class ReportsView(RoleRequiredMixin, TemplateView):
     template_name = 'reports/index.html'
+    allowed_roles = ('ADMIN', 'GERENTE')

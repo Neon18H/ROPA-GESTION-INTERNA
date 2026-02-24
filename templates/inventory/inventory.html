@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Inventario{% endblock %}
+{% block page_title %}Inventario & Kardex{% endblock %}
 {% block content %}
 <div class="card mb-3">
   <div class="card-body">
@@ -37,7 +38,15 @@
     </table>
   </div>
 </div>
-<div class="card mt-3"><div class="card-header"><h3 class="card-title">Kardex (resumen)</h3></div><div class="card-body"><p class="text-muted mb-0">Movimientos organizados por variante y disponibles para auditoría.</p></div></div>
+<div class="card mt-3">
+  <div class="card-header"><h3 class="card-title">Kardex reciente</h3></div>
+  <div class="card-body">
+    <table class="table table-sm">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cant</th><th>Ref</th></tr></thead>
+      <tbody>{% for k in kardex_entries %}<tr><td>{{ k.created_at|date:'Y-m-d H:i' }}</td><td>{{ k.type }}</td><td>{{ k.variant.product.name }}</td><td>{{ k.qty }}</td><td>{{ k.reference }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted">Sin movimientos.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
 {% block extra_js %}
 <script>$(function(){ $('#inventoryTable').DataTable(); });</script>

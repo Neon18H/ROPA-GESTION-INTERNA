@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block page_title %}Recibo venta #{{ object.number }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between"><h3 class="card-title mb-0">Recibo</h3><a href="{% url 'sales:print' object.pk %}" class="btn btn-outline-primary" target="_blank"><i class="fa fa-print me-1"></i>Imprimir</a></div>
+  <div class="card-body">
+    <p><strong>Cliente:</strong> {{ object.customer.name|default:'Consumidor final' }}</p>
+    <table class="table"><thead><tr><th>Item</th><th>Cant</th><th>Total</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>${{ i.line_total }}</td></tr>{% endfor %}</tbody></table>
+    <h5 class="text-end">Total: ${{ object.total }}</h5>
+  </div>
+</div>
+{% endblock %}

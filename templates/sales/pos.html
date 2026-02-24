@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block page_title %}POS{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><strong>Buscar productos</strong></div>
+      <div class="card-body">
+        <form method="get" class="mb-3"><div class="input-group"><input name="q" value="{{ query }}" class="form-control" placeholder="SKU, barcode o nombre"><button class="btn btn-outline-primary">Buscar</button></div></form>
+        <div class="list-group small">
+          {% for v in variants %}
+          <button type="button" class="list-group-item list-group-item-action add-item" data-id="{{ v.id }}" data-name="{{ v.product.name }} {{ v.size }}/{{ v.color }}" data-price="0">{{ v.product.sku }} · {{ v.product.name }} {{ v.size }}/{{ v.color }} (Stock: {{ v.stock.quantity|default:0 }})</button>
+          {% empty %}<div class="text-muted">Sin resultados.</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <form method="post" class="card">{% csrf_token %}
+      <div class="card-header"><strong>Registrar venta</strong></div>
+      <div class="card-body">
+        {{ form.customer.label_tag }} {{ form.customer }}
+        <hr>
+        <h6>O crear cliente</h6>
+        <div class="row g-2">
+          <div class="col-md-6">{{ form.customer_name.label_tag }}{{ form.customer_name }}</div>
+          <div class="col-md-6">{{ form.customer_phone.label_tag }}{{ form.customer_phone }}</div>
+          <div class="col-md-6">{{ form.customer_email.label_tag }}{{ form.customer_email }}</div>
+          <div class="col-md-6">{{ form.customer_document_id.label_tag }}{{ form.customer_document_id }}</div>
+        </div>
+        <hr>
+        {{ form.payment_method.label_tag }}{{ form.payment_method }}
+        {% if request.user.role == 'ADMIN' %}<div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="allow_negative" value="1" id="allowNeg"><label for="allowNeg" class="form-check-label">Permitir stock negativo (admin)</label></div>{% endif %}
+        <table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Desc</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card-footer text-end"><button class="btn btn-success">Confirmar venta</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+$('.add-item').on('click', function(){
+  const id=$(this).data('id'), name=$(this).data('name');
+  $('#itemsTable tbody').append(`<tr><td>${name}<input type='hidden' name='variant_id' value='${id}'></td><td><input class='form-control' type='number' name='qty' value='1' min='1'></td><td><input class='form-control' type='number' name='unit_price' value='0' step='0.01'></td><td><input class='form-control' type='number' name='discount' value='0' step='0.01'></td></tr>`)
+});
+</script>
+{% endblock %}

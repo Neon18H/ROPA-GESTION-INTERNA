@@ -57,6 +57,11 @@ class OrganizationUserForm(forms.ModelForm):
         model = User
         fields = ['username', 'email', 'role', 'password', 'is_active']
 
+    def clean_password(self):
+        value = self.cleaned_data['password']
+        validate_password(value)
+        return value
+
     def save(self, commit=True, organization=None):
         user = super().save(commit=False)
         user.organization = organization

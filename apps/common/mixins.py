@@ -2,6 +2,7 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 
 
@@ -19,6 +20,15 @@ class OrganizationAccessMixin(LoginRequiredMixin, OrganizationRequiredMixin):
     login_url = 'accounts:login'
 
 
+class RoleRequiredMixin(OrganizationAccessMixin):
+    allowed_roles = ()
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.allowed_roles and request.user.role not in self.allowed_roles:
+            raise PermissionDenied('No tienes permisos para acceder a este módulo.')
+        return super().dispatch(request, *args, **kwargs)
+
+
 def organization_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
@@ -30,3 +40,17 @@ def organization_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return _wrapped
+
+
+def role_required(*roles):
+    def decorator(view_func):
+        @wraps(view_func)
+        @organization_required
+        def _wrapped(request, *args, **kwargs):
+            if roles and request.user.role not in roles:
+                raise PermissionDenied('No tienes permisos para acceder a este módulo.')
+            return view_func(request, *args, **kwargs)
+
+        return _wrapped
+
+    return decorator

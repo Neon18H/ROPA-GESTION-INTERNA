@@ -1,1 +1,28 @@
-{% extends 'base.html' %}{% block content %}<h2>Usuarios</h2>{% for u in object_list %}<div>{{ u.username }} - {{ u.role }}</div>{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block page_title %}Usuarios{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">Usuarios de la organización</h3>
+    <a href="{% url 'accounts:user_create' %}" class="btn btn-primary btn-sm"><i class="fa fa-plus me-1"></i>Nuevo usuario</a>
+  </div>
+  <div class="card-body">
+    <table class="table table-striped" id="usersTable">
+      <thead><tr><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+      {% for u in object_list %}
+      <tr>
+        <td>{{ u.username }}</td><td>{{ u.email }}</td><td><span class="badge bg-info">{{ u.role }}</span></td>
+        <td>{% if u.is_active %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-danger">Inactivo</span>{% endif %}</td>
+        <td class="text-end">
+          <a href="{% url 'accounts:user_reset_password' u.pk %}" class="btn btn-outline-warning btn-sm"><i class="fa fa-key"></i></a>
+          <a href="{% url 'accounts:user_toggle_active' u.pk %}" class="btn btn-outline-secondary btn-sm"><i class="fa fa-power-off"></i></a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script>$(function(){ $('#usersTable').DataTable();});</script>{% endblock %}
