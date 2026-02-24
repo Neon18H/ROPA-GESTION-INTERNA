@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied
 from django.views.generic import ListView
 
 from apps.common.mixins import RoleRequiredMixin
@@ -10,4 +11,7 @@ class CustomerListView(RoleRequiredMixin, ListView):
     allowed_roles = ('ADMIN', 'VENDEDOR')
 
     def get_queryset(self):
-        return Customer.objects.filter(organization=self.request.user.organization)
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+        return Customer.objects.filter(organization=org)

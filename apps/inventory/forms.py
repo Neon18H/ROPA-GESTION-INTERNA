@@ -1,4 +1,6 @@
 from django import forms
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.forms import formset_factory
 
 from .models import Brand, Category, KardexEntry, Product, Variant
@@ -39,6 +41,15 @@ class ProductForm(forms.ModelForm):
             raise forms.ValidationError('Ya existe un producto con este SKU en la organización actual.')
 
         return sku
+
+
+    def save(self, commit=True):
+        try:
+            return super().save(commit=commit)
+        except IntegrityError as exc:
+            if 'uq_org_sku' in str(exc):
+                raise ValidationError({'sku': 'Ya existe un producto con este SKU en la organización actual.'}) from exc
+            raise
 
     def clean(self):
         cleaned_data = super().clean()

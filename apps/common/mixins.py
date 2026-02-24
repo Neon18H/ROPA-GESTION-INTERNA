@@ -7,10 +7,13 @@ from django.shortcuts import redirect
 
 
 class OrganizationRequiredMixin:
+    def get_org(self):
+        return getattr(self.request.user, 'organization', None) or getattr(self.request, 'organization', None)
+
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
-        if not getattr(request.user, 'organization_id', None):
+        if not self.get_org():
             messages.warning(request, 'Debes registrar una organización para continuar.')
             return redirect('accounts:register')
         return super().dispatch(request, *args, **kwargs)
