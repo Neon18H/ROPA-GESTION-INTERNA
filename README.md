@@ -34,7 +34,14 @@ python manage.py findstatic css/theme.css -v 2
 python manage.py collectstatic --noinput
 ```
 
-Después de esto, `GET /static/css/theme.css` y `GET /static/js/app.js` deben responder `200`.
+En runtime (app desplegada), confirma que WhiteNoise está sirviendo archivos estáticos correctamente:
+
+```bash
+curl -I https://<tu-dominio>/static/css/theme.css
+curl -I https://<tu-dominio>/static/js/app.js
+```
+
+Las respuestas deben ser `HTTP/1.1 200 OK`. Para `theme.css`, el header `Content-Type` debe ser `text/css` (no `text/html`).
 
 ## Credenciales demo local
 - Usuario sugerido: `admin`
