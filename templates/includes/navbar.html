@@ -14,23 +14,25 @@
         <i class="bi bi-buildings me-1"></i>{{ request.user.organization.name|default:'Sin organización' }}
       </span>
 
-      <div class="d-flex align-items-center gap-2 ms-auto">
+      <div class="dropdown ms-auto">
         <button class="btn btn-light border d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
           <span class="avatar-circle">{{ request.user.username|default:'U'|slice:':1'|upper }}</span>
           <span class="d-none d-md-inline">{{ request.user.username }}</span>
           <i class="bi bi-chevron-down small text-muted"></i>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm enterprise-dropdown">
           <li><a class="dropdown-item" href="{% url 'settings_app:index' %}"><i class="bi bi-sliders me-2"></i>Configuración</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'accounts:logout' %}" class="px-2 pb-2">
+              {% csrf_token %}
+              <button class="btn btn-danger w-100 d-inline-flex align-items-center justify-content-center gap-2" type="submit">
+                <i class="bi bi-box-arrow-right"></i>
+                Cerrar sesión
+              </button>
+            </form>
+          </li>
         </ul>
-
-        <form method="post" action="{% url 'accounts:logout' %}" class="m-0">
-          {% csrf_token %}
-          <button class="btn btn-danger d-flex align-items-center gap-2" type="submit">
-            <i class="bi bi-box-arrow-right"></i>
-            <span class="d-none d-sm-inline">Cerrar sesión</span>
-          </button>
-        </form>
       </div>
     </div>
   </div>
