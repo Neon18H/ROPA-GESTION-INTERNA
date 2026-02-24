@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-4"><div class="card p-3"><h4>Ingreso</h4>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary w-100">Entrar</button></form>
+</div></div></div>
+{% endblock %}

@@ -1,0 +1,2 @@
+{% extends 'base.html' %}{% block content %}<h2>Productos</h2><a class="btn btn-primary" href="/inventory/products/new/">Nuevo</a>
+<table class="table mt-3"><tr><th>SKU</th><th>Nombre</th></tr>{% for p in object_list %}<tr><td>{{ p.sku }}</td><td>{{ p.name }}</td></tr>{% endfor %}</table>{% endblock %}

@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h2>Devoluciones</h2>{% for r in object_list %}<div>{{ r.sale.number }} - {{ r.type }}</div>{% endfor %}{% endblock %}
