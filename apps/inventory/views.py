@@ -4,6 +4,7 @@ from io import TextIOWrapper
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.db import transaction
 from django.db.models import F, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -57,9 +58,37 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
         return kwargs
 
     def form_valid(self, form):
-        form.instance.organization = self.request.user.organization
+        org = self.request.user.organization
+        initial_qty = form.cleaned_data.get('initial_qty') or 0
+        initial_cost = form.cleaned_data.get('initial_cost') or 0
+
+        with transaction.atomic():
+            form.instance.organization = org
+            self.object = form.save()
+
+            default_variant = Variant.objects.create(
+                product=self.object,
+                size='UNICA',
+                color='UNICO',
+                gender=Variant.Gender.UNISEX,
+                is_active=True,
+            )
+            Stock.objects.create(variant=default_variant, quantity=0)
+
+            if initial_qty > 0:
+                create_kardex_movement(
+                    organization=org,
+                    user=self.request.user,
+                    variant=default_variant,
+                    movement_type=KardexEntry.Type.IN,
+                    qty=initial_qty,
+                    unit_cost=initial_cost,
+                    note='Stock inicial al crear producto',
+                    reference=f'product-create:{self.object.id}',
+                )
+
         messages.success(self.request, 'Producto creado')
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class ProductUpdateView(RoleRequiredMixin, UpdateView):
@@ -81,6 +110,9 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
 @role_required('ADMIN', 'BODEGA')
 def inventory_view(request):
     org = request.user.organization
+    variants_without_stock = Variant.objects.filter(product__organization=org, stock__isnull=True).values_list('id', flat=True)
+    Stock.objects.bulk_create([Stock(variant_id=variant_id, quantity=0) for variant_id in variants_without_stock], ignore_conflicts=True)
+
     variants = Variant.objects.filter(product__organization=org).select_related('product', 'product__category', 'product__brand', 'stock')
 
     category_id = request.GET.get('category')

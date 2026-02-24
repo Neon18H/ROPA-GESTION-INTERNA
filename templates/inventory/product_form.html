@@ -2,8 +2,19 @@
 {% block content %}
 <div class="card p-3">
   <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Producto</h5><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:categories' %}">Categorías</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:brands' %}">Marcas</a></div></div>
-  <form method="post">{% csrf_token %}{{ form.as_p }}
-    <div class="d-flex gap-2"><button class="btn btn-dark btn-sm">Guardar</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button></div>
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="row g-3">
+      <div class="col-md-4">{{ form.sku.label_tag }}{{ form.sku }}</div>
+      <div class="col-md-8">{{ form.name.label_tag }}{{ form.name }}</div>
+      <div class="col-md-6">{{ form.category.label_tag }}{{ form.category }}</div>
+      <div class="col-md-6">{{ form.brand.label_tag }}{{ form.brand }}</div>
+      <div class="col-12">{{ form.description.label_tag }}{{ form.description }}</div>
+      <div class="col-md-3">{{ form.initial_qty.label_tag }}{{ form.initial_qty }}</div>
+      <div class="col-md-3">{{ form.initial_cost.label_tag }}{{ form.initial_cost }}{% if form.initial_cost.help_text %}<div class="form-text">{{ form.initial_cost.help_text }}</div>{% endif %}</div>
+      <div class="col-md-3 d-flex align-items-end"><div class="form-check">{{ form.is_active }} {{ form.is_active.label_tag }}</div></div>
+    </div>
+    <div class="d-flex gap-2 mt-3"><button class="btn btn-dark btn-sm">Guardar</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button></div>
   </form>
 </div>
 <div class="modal fade" id="quickCategory" tabindex="-1"><div class="modal-dialog"><div class="modal-content p-3"><input class="form-control" id="quickCategoryName" placeholder="Categoría"><button class="btn btn-dark btn-sm mt-2" id="saveQuickCategory">Guardar</button></div></div></div>
