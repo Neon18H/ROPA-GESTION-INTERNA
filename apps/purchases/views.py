@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Max
 from django.http import JsonResponse
@@ -21,7 +22,10 @@ class PurchaseListView(RoleRequiredMixin, ListView):
     allowed_roles = ('ADMIN', 'BODEGA')
 
     def get_queryset(self):
-        return PurchaseOrder.objects.filter(organization=self.request.user.organization).select_related('supplier')
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+        return PurchaseOrder.objects.filter(organization=org).select_related('supplier')
 
 
 @role_required('ADMIN', 'BODEGA')
@@ -77,7 +81,10 @@ class PurchaseDetailView(RoleRequiredMixin, DetailView):
     allowed_roles = ('ADMIN', 'BODEGA')
 
     def get_queryset(self):
-        return PurchaseOrder.objects.filter(organization=self.request.user.organization).select_related('supplier').prefetch_related('items__variant__product')
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+        return PurchaseOrder.objects.filter(organization=org).select_related('supplier').prefetch_related('items__variant__product')
 
 
 @role_required('ADMIN', 'BODEGA')

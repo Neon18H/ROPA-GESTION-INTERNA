@@ -1,9 +1,11 @@
 import csv
+import logging
 from decimal import Decimal
 from io import TextIOWrapper
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, transaction
 from django.db.models import F, Q, Sum
 from django.http import JsonResponse
@@ -18,13 +20,18 @@ from .models import Brand, Category, KardexEntry, Product, Stock, Variant
 from .services import create_kardex_movement
 
 
+logger = logging.getLogger(__name__)
+
+
 class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
     model = Product
     template_name = 'inventory/product_list.html'
     allowed_roles = ('ADMIN', 'BODEGA')
 
     def get_queryset(self):
-        org = self.request.user.organization
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
         queryset = (
             Product.objects.filter(organization=org)
             .select_related('category', 'brand')
@@ -54,7 +61,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self.request.user.organization
+        kwargs['organization'] = self.get_org()
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -69,13 +76,19 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
         if not variant_formset.is_valid():
             return self.form_invalid(form)
 
-        org = self.request.user.organization
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
         initial_qty = form.cleaned_data.get('initial_qty') or 0
         initial_cost = form.cleaned_data.get('initial_cost') or Decimal('0')
 
         with transaction.atomic():
             form.instance.organization = org
-            self.object = form.save()
+            try:
+                self.object = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
+                return self.form_invalid(form)
             self._save_variants(self.object, variant_formset)
 
             default_variant = self.object.variant_set.order_by('id').first()
@@ -127,15 +140,26 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
     success_url = reverse_lazy('inventory:products')
     allowed_roles = ('ADMIN', 'BODEGA')
 
-    def _get_request_organization(self):
-        return getattr(self.request, 'organization', None) or self.request.user.organization
+    def dispatch(self, request, *args, **kwargs):
+        product = Product.objects.filter(pk=kwargs.get('pk')).only('id', 'organization_id').first()
+        logger.debug(
+            'ProductUpdateView org check user_org_id=%s request_org_id=%s product_org_id=%s product_id=%s',
+            getattr(request.user, 'organization_id', None),
+            getattr(getattr(request, 'organization', None), 'id', None),
+            getattr(product, 'organization_id', None),
+            kwargs.get('pk'),
+        )
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Product.objects.filter(organization=self._get_request_organization())
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+        return Product.objects.filter(organization=org)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['organization'] = self._get_request_organization()
+        kwargs['organization'] = self.get_org()
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -155,10 +179,13 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
 
         with transaction.atomic():
             obj = form.save(commit=False)
-            obj.organization = self._get_request_organization()
-            obj.save()
-            form.save_m2m()
-            self.object = obj
+            obj.organization = self.get_org()
+            form.instance = obj
+            try:
+                self.object = form.save()
+            except ValidationError as exc:
+                form.add_error(None, exc)
+                return self.form_invalid(form)
             self.object.variant_set.all().delete()
             created = 0
             for entry in variant_formset.cleaned_data:

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,7 +20,10 @@ class SaleListView(RoleRequiredMixin, ListView):
     allowed_roles = ('ADMIN', 'VENDEDOR')
 
     def get_queryset(self):
-        return Sale.objects.filter(organization=self.request.user.organization).select_related('created_by', 'customer')
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+        return Sale.objects.filter(organization=org).select_related('created_by', 'customer')
 
 
 @role_required('ADMIN', 'VENDEDOR')
@@ -133,7 +137,10 @@ class SaleReceiptView(RoleRequiredMixin, DetailView):
     allowed_roles = ('ADMIN', 'VENDEDOR')
 
     def get_queryset(self):
-        return Sale.objects.filter(organization=self.request.user.organization).select_related('customer').prefetch_related('items__variant__product')
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+        return Sale.objects.filter(organization=org).select_related('customer').prefetch_related('items__variant__product')
 
 
 @role_required('ADMIN', 'VENDEDOR')
