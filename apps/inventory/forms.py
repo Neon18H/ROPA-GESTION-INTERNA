@@ -4,8 +4,8 @@ from .models import Brand, Category, KardexEntry, Product, Variant
 
 
 class ProductForm(forms.ModelForm):
-    initial_qty = forms.IntegerField(min_value=0, required=False, label='Ingreso inicial')
-    initial_cost = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Costo inicial')
+    initial_qty = forms.IntegerField(min_value=0, required=False, label='Stock inicial', initial=0)
+    initial_cost = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Costo inicial', help_text='Opcional para registrar Kardex de entrada inicial.')
 
     class Meta:
         model = Product
@@ -16,6 +16,15 @@ class ProductForm(forms.ModelForm):
         self.organization = organization
         self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        initial_qty = cleaned_data.get('initial_qty') or 0
+        initial_cost = cleaned_data.get('initial_cost')
+
+        if initial_qty == 0:
+            cleaned_data['initial_cost'] = initial_cost or 0
+        return cleaned_data
 
 
 class VariantForm(forms.ModelForm):
