@@ -1,1 +1,44 @@
-{% extends 'base.html' %}{% block content %}<h2>Inventario</h2><p>Stock bajo: {{ low_stock_count }}</p>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Inventario{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <form class="row g-2" method="get">
+      <div class="col-md-3"><select name="category" class="form-select"><option value="">Categoría</option>{% for c in categories %}<option value="{{ c.id }}" {% if selected_category == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><select name="brand" class="form-select"><option value="">Marca</option>{% for b in brands %}<option value="{{ b.id }}" {% if selected_brand == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select></div>
+      <div class="col-md-2 form-check mt-2 ms-2"><input class="form-check-input" type="checkbox" name="low_stock" value="1" {% if low_stock %}checked{% endif %}><label class="form-check-label">Stock bajo</label></div>
+      <div class="col-md-3"><button class="btn btn-primary"><i class="fas fa-filter me-1"></i>Filtrar</button></div>
+    </form>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header d-flex justify-content-between"><h3 class="card-title">Inventario</h3><span class="badge bg-danger">Bajo stock: {{ low_stock_count }}</span></div>
+  <div class="card-body">
+    <table id="inventoryTable" class="table table-bordered table-hover">
+      <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th>Stock</th><th>Estado</th><th>Ajuste rápido</th></tr></thead>
+      <tbody>
+      {% for v in variants %}
+      <tr>
+        <td>{{ v.product.sku }}</td>
+        <td>{{ v.product.name }}</td>
+        <td>{{ v.size }} / {{ v.color }}</td>
+        <td>{{ v.stock.quantity|default:0 }}</td>
+        <td>{% if v.stock.quantity|default:0 <= v.stock.min_alert|default:0 %}<span class="badge bg-danger">Bajo</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
+        <td>
+          <form method="post" class="d-flex gap-2">{% csrf_token %}
+            <input type="hidden" name="variant_id" value="{{ v.id }}">
+            <input type="number" name="adjust_qty" class="form-control form-control-sm" value="1" style="max-width:90px;">
+            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-sliders"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="card mt-3"><div class="card-header"><h3 class="card-title">Kardex (resumen)</h3></div><div class="card-body"><p class="text-muted mb-0">Movimientos organizados por variante y disponibles para auditoría.</p></div></div>
+{% endblock %}
+{% block extra_js %}
+<script>$(function(){ $('#inventoryTable').DataTable(); });</script>
+{% endblock %}

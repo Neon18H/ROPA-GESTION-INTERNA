@@ -1,11 +1,11 @@
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth import get_user_model, login
+from django.views.generic import ListView, FormView
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import ListView, FormView
+
+from apps.common.mixins import OrganizationRequiredMixin, organization_required
 from .forms import OrganizationRegistrationForm, OrganizationUserForm
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -13,15 +13,21 @@ User = get_user_model()
 class RegisterOrganizationView(FormView):
     template_name = 'accounts/register_org.html'
     form_class = OrganizationRegistrationForm
-    success_url = reverse_lazy('login')
+    success_url = reverse_lazy('dashboard:index')
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.organization:
+            return redirect('dashboard:index')
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        form.save()
-        messages.success(self.request, 'Tienda creada correctamente.')
+        _, user = form.save()
+        login(self.request, user)
+        messages.success(self.request, 'Tienda creada correctamente. ¡Bienvenido!')
         return super().form_valid(form)
 
 
-class OrganizationUserListView(LoginRequiredMixin, ListView):
+class OrganizationUserListView(OrganizationRequiredMixin, ListView):
     template_name = 'accounts/user_list.html'
     model = User
 
@@ -29,7 +35,7 @@ class OrganizationUserListView(LoginRequiredMixin, ListView):
         return User.objects.filter(organization=self.request.user.organization)
 
 
-@login_required
+@organization_required
 def create_user(request):
     if request.method == 'POST':
         form = OrganizationUserForm(request.POST)
