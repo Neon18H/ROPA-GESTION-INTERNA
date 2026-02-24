@@ -4,13 +4,13 @@ from io import TextIOWrapper
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
-from apps.common.mixins import RoleRequiredMixin, role_required
+from apps.common.mixins import RoleRequiredMixin, organization_required, role_required
 from apps.common.models import OrganizationScopedMixin
 from .forms import BrandForm, CategoryForm, ProductForm, StockMovementForm
 from .models import Brand, Category, KardexEntry, Product, Stock, Variant
@@ -58,23 +58,8 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.organization = self.request.user.organization
-        response = super().form_valid(form)
-        initial_qty = form.cleaned_data.get('initial_qty') or 0
-        if initial_qty > 0:
-            variant = self.object.variant_set.first()
-            if variant:
-                create_kardex_movement(
-                    organization=self.request.user.organization,
-                    user=self.request.user,
-                    variant=variant,
-                    movement_type=KardexEntry.Type.IN,
-                    qty=initial_qty,
-                    unit_cost=form.cleaned_data.get('initial_cost') or 0,
-                    note='Ingreso inicial al crear producto',
-                    reference=f'product:{self.object.id}',
-                )
         messages.success(self.request, 'Producto creado')
-        return response
+        return super().form_valid(form)
 
 
 class ProductUpdateView(RoleRequiredMixin, UpdateView):
@@ -107,7 +92,7 @@ def inventory_view(request):
     if brand_id:
         variants = variants.filter(product__brand_id=brand_id)
     if low_stock:
-        variants = variants.filter(stock__quantity__lte=models.F('stock__min_alert'))
+        variants = variants.filter(Q(stock__quantity__lte=F('stock__min_alert')) | Q(stock__quantity__isnull=True))
 
     if request.method == 'POST':
         form = StockMovementForm(request.POST, organization=org)
@@ -127,10 +112,10 @@ def inventory_view(request):
                 reference='inventory-manual',
             )
             messages.success(request, 'Movimiento aplicado correctamente.')
-        return redirect('inventory:inventory')
+            return redirect('inventory:inventory')
 
     context = {
-        'variants': variants,
+        'variants': variants.order_by('product__name', 'size', 'color'),
         'categories': Category.objects.filter(organization=org),
         'brands': Brand.objects.filter(organization=org),
         'movement_form': StockMovementForm(organization=org),
@@ -142,7 +127,39 @@ def inventory_view(request):
         'selected_brand': brand_id,
         'low_stock': low_stock,
     }
-    return render(request, 'inventory/inventory.html', context)
+    return render(request, 'inventory/index.html', context)
+
+
+@role_required('ADMIN', 'BODEGA')
+def categories_view(request):
+    org = request.user.organization
+    if request.method == 'POST':
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.organization = org
+            obj.save()
+            messages.success(request, 'Categoría creada.')
+            return redirect('inventory:categories')
+    else:
+        form = CategoryForm()
+    return render(request, 'inventory/categories.html', {'items': Category.objects.filter(organization=org).order_by('name'), 'form': form})
+
+
+@role_required('ADMIN', 'BODEGA')
+def brands_view(request):
+    org = request.user.organization
+    if request.method == 'POST':
+        form = BrandForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.organization = org
+            obj.save()
+            messages.success(request, 'Marca creada.')
+            return redirect('inventory:brands')
+    else:
+        form = BrandForm()
+    return render(request, 'inventory/brands.html', {'items': Brand.objects.filter(organization=org).order_by('name'), 'form': form})
 
 
 @role_required('ADMIN', 'BODEGA')
@@ -160,22 +177,8 @@ def import_products(request):
     return render(request, 'inventory/import.html')
 
 
-@role_required('ADMIN', 'BODEGA')
-def catalogs_view(request):
-    org = request.user.organization
-    return render(
-        request,
-        'inventory/catalogs.html',
-        {
-            'categories': Category.objects.filter(organization=org).order_by('name'),
-            'brands': Brand.objects.filter(organization=org).order_by('name'),
-            'category_form': CategoryForm(),
-            'brand_form': BrandForm(),
-        },
-    )
-
-
 @login_required
+@organization_required
 def quick_create_category(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
@@ -188,6 +191,7 @@ def quick_create_category(request):
 
 
 @login_required
+@organization_required
 def quick_create_brand(request):
     if request.method == 'POST':
         form = BrandForm(request.POST)

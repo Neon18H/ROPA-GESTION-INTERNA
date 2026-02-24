@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<form method="post" class="card p-3">{% csrf_token %}
+  <h5>Nueva devolución</h5>{{ form.as_p }}
+  <table class="table table-modern" id="returnItems"><thead><tr><th>Variante</th><th>Cantidad</th><th>Acción</th><th></th></tr></thead><tbody></tbody></table>
+  <div class="list-group small mb-3">{% for v in variants %}<button type="button" class="list-group-item list-group-item-action add-return" data-id="{{ v.id }}" data-name="{{ v.product.name }} {{ v.size }}/{{ v.color }}">{{ v.product.sku }} · {{ v.product.name }} · {{ v.size }}/{{ v.color }}</button>{% endfor %}</div>
+  <button class="btn btn-dark btn-sm">Registrar devolución</button>
+</form>
+{% endblock %}
+{% block extra_js %}<script>
+$(document).on('click','.add-return',function(){const id=$(this).data('id'),name=$(this).data('name');$('#returnItems tbody').append(`<tr><td>${name}<input type='hidden' name='variant_id' value='${id}'></td><td><input class='form-control form-control-sm' name='qty' type='number' value='1' min='1'></td><td><select name='action' class='form-select form-select-sm'><option value='RESTOCK'>RESTOCK</option><option value='DAMAGED'>DAMAGED</option></select></td><td><button type='button' class='btn btn-sm btn-outline-danger remove-row'>x</button></td></tr>`)});
+$(document).on('click','.remove-row',function(){$(this).closest('tr').remove();});
+</script>{% endblock %}
