@@ -1,13 +1,13 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
-from apps.common.mixins import OrganizationRequiredMixin
+from apps.common.mixins import RoleRequiredMixin
 from apps.sales.models import Sale
 from .models import Expense
 
 
-class FinanceSummaryView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateView):
+class FinanceSummaryView(RoleRequiredMixin, TemplateView):
     template_name = 'finance/summary.html'
+    allowed_roles = ('ADMIN', 'GERENTE')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

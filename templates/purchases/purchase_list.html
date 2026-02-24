@@ -1,1 +1,12 @@
-{% extends 'base.html' %}{% block content %}<h2>Compras</h2>{% for p in object_list %}<div>OC {{ p.number }} - {{ p.status }}</div>{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block page_title %}Compras{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center"><h3 class="card-title mb-0">Órdenes de compra</h3><a href="{% url 'purchases:create' %}" class="btn btn-primary btn-sm">Nueva OC</a></div>
+  <div class="card-body">
+    <p class="text-muted">Método de costos usado al recibir: <strong>último costo</strong>.</p>
+    <table class="table" id="purchaseTable"><thead><tr><th>#</th><th>Proveedor</th><th>Estado</th><th>Total</th><th></th></tr></thead><tbody>{% for p in object_list %}<tr><td>{{ p.number }}</td><td>{{ p.supplier.name }}</td><td><span class="badge {% if p.status == 'RECEIVED' %}bg-success{% else %}bg-secondary{% endif %}">{{ p.status }}</span></td><td>${{ p.total }}</td><td><a class="btn btn-outline-primary btn-sm" href="{% url 'purchases:detail' p.pk %}">Detalle</a></td></tr>{% endfor %}</tbody></table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script>$(function(){ $('#purchaseTable').DataTable();});</script>{% endblock %}

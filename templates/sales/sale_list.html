@@ -1,1 +1,17 @@
-{% extends 'base.html' %}{% block content %}<h2>Ventas</h2><table class="table"><tr><th>#</th><th>Total</th><th>Estado</th></tr>{% for s in object_list %}<tr><td>{{ s.number }}</td><td>{{ s.total }}</td><td>{{ s.status }}</td></tr>{% endfor %}</table>{% endblock %}
+{% extends 'base.html' %}
+{% block page_title %}Ventas{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">Historial de ventas</h3>
+    <a href="{% url 'sales:pos' %}" class="btn btn-primary btn-sm"><i class="fa fa-cash-register me-1"></i>Nueva venta</a>
+  </div>
+  <div class="card-body">
+    <table class="table table-hover" id="salesTable">
+      <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Pago</th><th></th></tr></thead>
+      <tbody>{% for s in object_list %}<tr><td>{{ s.number }}</td><td>{{ s.customer.name|default:'Consumidor final' }}</td><td>${{ s.total }}</td><td>{{ s.get_payment_method_display }}</td><td><a href="{% url 'sales:receipt' s.pk %}" class="btn btn-outline-primary btn-sm">Ver</a></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script>$(function(){ $('#salesTable').DataTable();});</script>{% endblock %}

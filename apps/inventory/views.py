@@ -6,18 +6,18 @@ from django.db import models
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, ListView
 
-from apps.common.mixins import OrganizationRequiredMixin, organization_required
+from apps.common.mixins import RoleRequiredMixin, role_required
 from apps.common.models import OrganizationScopedMixin
 from .forms import ProductForm
-from .models import Brand, Category, Product, Stock, Variant
+from .models import Brand, Category, KardexEntry, Product, Stock, Variant
 
 
-class ProductListView(LoginRequiredMixin, OrganizationRequiredMixin, OrganizationScopedMixin, ListView):
+class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
     model = Product
     template_name = 'inventory/product_list.html'
+    allowed_roles = ('ADMIN', 'BODEGA')
 
     def get_queryset(self):
         org = self.request.user.organization
@@ -40,26 +40,13 @@ class ProductListView(LoginRequiredMixin, OrganizationRequiredMixin, Organizatio
             queryset = queryset.filter(Q(total_stock__lte=3) | Q(total_stock__isnull=True))
         return queryset
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        org = self.request.user.organization
-        context.update(
-            {
-                'categories': Category.objects.filter(organization=org),
-                'brands': Brand.objects.filter(organization=org),
-                'selected_category': self.request.GET.get('category', ''),
-                'selected_brand': self.request.GET.get('brand', ''),
-                'low_stock': self.request.GET.get('low_stock') == '1',
-            }
-        )
-        return context
 
-
-class ProductCreateView(LoginRequiredMixin, OrganizationRequiredMixin, CreateView):
+class ProductCreateView(RoleRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
     template_name = 'inventory/product_form.html'
     success_url = reverse_lazy('inventory:products')
+    allowed_roles = ('ADMIN', 'BODEGA')
 
     def form_valid(self, form):
         form.instance.organization = self.request.user.organization
@@ -67,7 +54,7 @@ class ProductCreateView(LoginRequiredMixin, OrganizationRequiredMixin, CreateVie
         return super().form_valid(form)
 
 
-@organization_required
+@role_required('ADMIN', 'BODEGA')
 def inventory_view(request):
     org = request.user.organization
     variants = Variant.objects.filter(product__organization=org).select_related('product', 'product__category', 'product__brand', 'stock')
@@ -85,11 +72,19 @@ def inventory_view(request):
 
     if request.method == 'POST':
         variant = get_object_or_404(Variant, id=request.POST.get('variant_id'), product__organization=org)
-        stock, _ = Stock.objects.get_or_create(variant=variant)
         delta = int(request.POST.get('adjust_qty', 0))
-        stock.quantity += delta
-        stock.save(update_fields=['quantity'])
-        messages.success(request, f'Ajuste aplicado a {variant.product.name} ({delta:+d}).')
+        if delta != 0:
+            entry = KardexEntry.objects.create(
+                organization=org,
+                variant=variant,
+                type=KardexEntry.Type.ADJUST,
+                qty=delta,
+                reference='manual-adjust',
+                note='Ajuste manual desde inventario',
+                created_by=request.user,
+            )
+            entry.apply_to_stock()
+            messages.success(request, f'Ajuste aplicado a {variant.product.name} ({delta:+d}).')
         return redirect('inventory:inventory')
 
     context = {
@@ -99,6 +94,7 @@ def inventory_view(request):
         'low_stock_count': Stock.objects.filter(
             variant__product__organization=org, quantity__lte=models.F('min_alert')
         ).count(),
+        'kardex_entries': KardexEntry.objects.filter(organization=org).select_related('variant__product').order_by('-created_at')[:10],
         'selected_category': category_id,
         'selected_brand': brand_id,
         'low_stock': low_stock,
@@ -106,7 +102,7 @@ def inventory_view(request):
     return render(request, 'inventory/inventory.html', context)
 
 
-@organization_required
+@role_required('ADMIN', 'BODEGA')
 def import_products(request):
     if request.method == 'POST' and request.FILES.get('file'):
         reader = csv.DictReader(TextIOWrapper(request.FILES['file'].file, encoding='utf-8'))

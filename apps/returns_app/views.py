@@ -1,13 +1,13 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView
 
-from apps.common.mixins import OrganizationRequiredMixin
+from apps.common.mixins import RoleRequiredMixin
 from .models import Return
 
 
-class ReturnListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
+class ReturnListView(RoleRequiredMixin, ListView):
     model = Return
     template_name = 'returns_app/list.html'
+    allowed_roles = ('ADMIN', 'VENDEDOR')
 
     def get_queryset(self):
         return Return.objects.filter(organization=self.request.user.organization)
