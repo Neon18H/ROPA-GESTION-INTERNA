@@ -7,20 +7,20 @@
 <li class="breadcrumb-item active" aria-current="page">Marcas</li>
 {% endblock %}
 {% block content %}
-<div class="row g-4">
-  <div class="col-12 col-lg-8 order-1">
-    <div class="card p-3 p-lg-4 h-100">
-      <h2 class="h6 mb-3">Listado</h2>
+<div class="row g-4 align-items-stretch">
+  <div class="col-12 col-xl-7">
+    <div class="card p-3 p-lg-4 split-panel-card">
+      <h2 class="h6 mb-3">Listado de marcas</h2>
       <div class="table-responsive">
         <table class="table enterprise-table align-middle mb-0">
           <thead>
-          <tr><th>Nombre</th><th class="text-end">Acciones</th></tr>
+          <tr><th>Nombre</th><th class="text-end">Estado</th></tr>
           </thead>
           <tbody>
           {% for b in items %}
             <tr>
               <td class="fw-medium">{{ b.name }}</td>
-              <td class="text-end"><button class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-pencil"></i></button></td>
+              <td class="text-end"><span class="badge text-bg-light border">Activa</span></td>
             </tr>
           {% empty %}
             <tr><td colspan="2" class="text-center text-secondary py-4">No hay marcas registradas.</td></tr>
@@ -31,9 +31,9 @@
     </div>
   </div>
 
-  <div class="col-12 col-lg-4 order-2">
-    <div class="card p-3 p-lg-4">
-      <h2 class="h6 mb-3">Nueva marca</h2>
+  <div class="col-12 col-xl-5">
+    <div class="card p-3 p-lg-4 split-panel-card">
+      <h2 class="h6 mb-3">Crear marca</h2>
       <form method="post" class="d-grid gap-3">
         {% csrf_token %}
         {{ form }}

@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  if (typeof bootstrap === 'undefined') return;
+
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
     bootstrap.Tooltip.getOrCreateInstance(el);
   });

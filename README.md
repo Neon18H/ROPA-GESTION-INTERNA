@@ -16,6 +16,7 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 - `DEBUG`
 - `ALLOWED_HOSTS=ropa-gestion-interna-production.up.railway.app`
 - `CSRF_TRUSTED_ORIGINS=https://ropa-gestion-interna-production.up.railway.app`
+- `DJANGO_SETTINGS_MODULE=gestion_ropa.settings`
 
 ## Comandos
 ```bash
@@ -24,6 +25,16 @@ python manage.py collectstatic --noinput
 python manage.py createsuperuser
 python manage.py seed_demo
 ```
+
+## Verificación de estáticos en producción
+Con `DJANGO_SETTINGS_MODULE=gestion_ropa.settings` activo, valida:
+
+```bash
+python manage.py findstatic css/theme.css -v 2
+python manage.py collectstatic --noinput
+```
+
+Después de esto, `GET /static/css/theme.css` y `GET /static/js/app.js` deben responder `200`.
 
 ## Credenciales demo local
 - Usuario sugerido: `admin`
@@ -46,5 +57,5 @@ python manage.py seed_demo
 ## Deploy Railway
 1. Conecta repo en Railway.
 2. Define variables de entorno.
-3. Deploy command: `python manage.py migrate && python manage.py collectstatic --noinput`.
-4. Start command: `gunicorn gestion_ropa.wsgi:application`.
+3. Deploy command: `DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py migrate && DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py collectstatic --noinput`.
+4. Start command: `DJANGO_SETTINGS_MODULE=gestion_ropa.settings gunicorn gestion_ropa.wsgi:application`.
