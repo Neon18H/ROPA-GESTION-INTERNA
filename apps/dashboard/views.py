@@ -1,4 +1,4 @@
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.views.generic import TemplateView
@@ -29,10 +29,23 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
             .order_by('-qty', 'variant__product__name')[:5]
         )
 
-        inventory_value_expr = ExpressionWrapper(F('quantity') * Coalesce(F('avg_cost'), F('last_cost')), output_field=DecimalField(max_digits=14, decimal_places=2))
+        decimal_output = DecimalField(max_digits=14, decimal_places=2)
+        inventory_cost_expr = Coalesce(
+            F('avg_cost'),
+            F('last_cost'),
+            Value(0, output_field=decimal_output),
+            output_field=decimal_output,
+        )
+        inventory_value_expr = ExpressionWrapper(F('quantity') * inventory_cost_expr, output_field=decimal_output)
         inventory_value = (
             Stock.objects.filter(variant__product__organization=org)
-            .aggregate(total=Coalesce(Sum(inventory_value_expr), 0))['total']
+            .aggregate(
+                total=Coalesce(
+                    Sum(inventory_value_expr, output_field=decimal_output),
+                    Value(0, output_field=decimal_output),
+                    output_field=decimal_output,
+                )
+            )['total']
         )
 
         low_stock_count = Stock.objects.filter(variant__product__organization=org, quantity__lte=F('min_alert')).count()
