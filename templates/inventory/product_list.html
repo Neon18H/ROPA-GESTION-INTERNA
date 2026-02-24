@@ -1,2 +1,71 @@
-{% extends 'base.html' %}{% block content %}<h2>Productos</h2><a class="btn btn-primary" href="/inventory/products/new/">Nuevo</a>
-<table class="table mt-3"><tr><th>SKU</th><th>Nombre</th></tr>{% for p in object_list %}<tr><td>{{ p.sku }}</td><td>{{ p.name }}</td></tr>{% endfor %}</table>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Inventario · ROPA SaaS{% endblock %}
+{% block page_title %}Inventario de productos{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
+<li class="breadcrumb-item active">Inventario</li>
+{% endblock %}
+{% block content %}
+<div class="card glass-card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Categoría</label>
+        <select name="category" class="form-select">
+          <option value="">Todas</option>
+          {% for category in categories %}<option value="{{ category.id }}" {% if selected_category == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Marca</label>
+        <select name="brand" class="form-select">
+          <option value="">Todas</option>
+          {% for brand in brands %}<option value="{{ brand.id }}" {% if selected_brand == brand.id|stringformat:'s' %}selected{% endif %}>{{ brand.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Stock</label>
+        <select name="low_stock" class="form-select">
+          <option value="0" {% if not low_stock %}selected{% endif %}>Todos</option>
+          <option value="1" {% if low_stock %}selected{% endif %}>Solo bajo</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary flex-fill"><i class="fas fa-filter me-1"></i>Filtrar</button>
+        <a href="{% url 'inventory:product_create' %}" class="btn btn-success"><i class="fas fa-plus"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card glass-card">
+  <div class="card-body table-responsive">
+    <table id="productTable" class="table table-dark table-hover align-middle mb-0">
+      <thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Estado</th></tr></thead>
+      <tbody>
+      {% for p in object_list %}
+      <tr>
+        <td>{{ p.sku }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.category.name|default:'-' }}</td>
+        <td>{{ p.brand.name|default:'-' }}</td>
+        <td>{{ p.total_stock|default:0 }}</td>
+        <td>
+          {% if p.total_stock|default:0 <= 3 %}
+          <span class="badge text-bg-danger">Bajo</span>
+          {% else %}
+          <span class="badge text-bg-success">Óptimo</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+$(function(){ $('#productTable').DataTable({pageLength:10, language:{url:'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'}}); });
+</script>
+{% endblock %}

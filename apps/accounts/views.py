@@ -11,7 +11,7 @@ User = get_user_model()
 
 
 class RegisterOrganizationView(FormView):
-    template_name = 'accounts/register_org.html'
+    template_name = 'auth/register.html'
     form_class = OrganizationRegistrationForm
     success_url = reverse_lazy('dashboard:index')
 

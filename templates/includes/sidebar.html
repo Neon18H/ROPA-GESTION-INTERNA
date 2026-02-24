@@ -1,13 +1,16 @@
-<aside class="main-sidebar sidebar-dark-primary elevation-4">
-  <a href="{% url 'dashboard:index' %}" class="brand-link"><span class="brand-text fw-light">ROPA SaaS</span></a>
+<aside class="main-sidebar sidebar-dark-primary elevation-4 premium-sidebar">
+  <a href="{% url 'dashboard:index' %}" class="brand-link border-0">
+    <i class="fas fa-shirt ms-2 me-2"></i><span class="brand-text fw-semibold">ROPA CINEMA SaaS</span>
+  </a>
   <div class="sidebar">
-    <nav class="mt-2">
-      <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
-        <li class="nav-item"><a href="{% url 'dashboard:index' %}" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard</p></a></li>
-        <li class="nav-item"><a href="{% url 'inventory:inventory' %}" class="nav-link"><i class="nav-icon fas fa-boxes-stacked"></i><p>Inventario</p></a></li>
+    <nav class="mt-3">
+      <div class="side-section-title">Módulos</div>
+      <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+        <li class="nav-item"><a href="{% url 'dashboard:index' %}" class="nav-link"><i class="nav-icon fas fa-gauge-high"></i><p>Dashboard</p></a></li>
+        <li class="nav-item"><a href="{% url 'inventory:products' %}" class="nav-link"><i class="nav-icon fas fa-boxes-stacked"></i><p>Inventario</p></a></li>
         <li class="nav-item"><a href="{% url 'sales:list' %}" class="nav-link"><i class="nav-icon fas fa-cash-register"></i><p>Ventas</p></a></li>
         <li class="nav-item"><a href="{% url 'customers:list' %}" class="nav-link"><i class="nav-icon fas fa-users"></i><p>Clientes</p></a></li>
-        <li class="nav-item"><a href="{% url 'purchases:list' %}" class="nav-link"><i class="nav-icon fas fa-truck"></i><p>Compras</p></a></li>
+        <li class="nav-item"><a href="{% url 'purchases:list' %}" class="nav-link"><i class="nav-icon fas fa-truck-fast"></i><p>Compras</p></a></li>
         <li class="nav-item"><a href="{% url 'finance:summary' %}" class="nav-link"><i class="nav-icon fas fa-wallet"></i><p>Finanzas</p></a></li>
         <li class="nav-item"><a href="{% url 'reports:index' %}" class="nav-link"><i class="nav-icon fas fa-chart-pie"></i><p>Reportes</p></a></li>
         <li class="nav-item"><a href="{% url 'settings_app:index' %}" class="nav-link"><i class="nav-icon fas fa-gear"></i><p>Configuración</p></a></li>

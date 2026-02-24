@@ -3,6 +3,7 @@ from io import TextIOWrapper
 
 from django.contrib import messages
 from django.db import models
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView
@@ -16,7 +17,41 @@ from .models import Brand, Category, Product, Stock, Variant
 class ProductListView(OrganizationRequiredMixin, OrganizationScopedMixin, ListView):
     model = Product
     template_name = 'inventory/product_list.html'
-    paginate_by = 20
+
+    def get_queryset(self):
+        org = self.request.user.organization
+        queryset = (
+            Product.objects.filter(organization=org)
+            .select_related('category', 'brand')
+            .annotate(total_stock=Sum('variant__stock__quantity'))
+            .order_by('name')
+        )
+
+        category_id = self.request.GET.get('category')
+        brand_id = self.request.GET.get('brand')
+        low_stock = self.request.GET.get('low_stock') == '1'
+
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        if brand_id:
+            queryset = queryset.filter(brand_id=brand_id)
+        if low_stock:
+            queryset = queryset.filter(Q(total_stock__lte=3) | Q(total_stock__isnull=True))
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        org = self.request.user.organization
+        context.update(
+            {
+                'categories': Category.objects.filter(organization=org),
+                'brands': Brand.objects.filter(organization=org),
+                'selected_category': self.request.GET.get('category', ''),
+                'selected_brand': self.request.GET.get('brand', ''),
+                'low_stock': self.request.GET.get('low_stock') == '1',
+            }
+        )
+        return context
 
 
 class ProductCreateView(OrganizationRequiredMixin, CreateView):
