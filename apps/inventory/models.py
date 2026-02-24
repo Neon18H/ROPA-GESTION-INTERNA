@@ -41,6 +41,8 @@ class Stock(models.Model):
     variant = models.OneToOneField(Variant, on_delete=models.CASCADE)
     quantity = models.IntegerField(default=0)
     min_alert = models.IntegerField(default=3)
+    last_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    avg_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
 
 class KardexEntry(OrganizationScopedModel):

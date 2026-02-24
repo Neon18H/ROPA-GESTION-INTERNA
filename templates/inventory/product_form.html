@@ -1,1 +1,39 @@
-{% extends 'base.html' %}{% block content %}<h2>Nuevo producto</h2><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-success">Guardar</button></form>{% endblock %}
+{% extends 'base.html' %}
+{% block page_title %}Producto{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between"><span>Producto</span><a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:catalogs' %}">Catálogos</a></div>
+  <div class="card-body">
+    <form method="post">{% csrf_token %}
+      {{ form.as_p }}
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary btn-sm">Guardar</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="quickCategory" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Nueva categoría</h5></div><div class="modal-body"><input class="form-control" id="quickCategoryName" placeholder="Nombre"></div><div class="modal-footer"><button class="btn btn-primary btn-sm" id="saveQuickCategory">Guardar</button></div></div></div></div>
+<div class="modal fade" id="quickBrand" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Nueva marca</h5></div><div class="modal-body"><input class="form-control" id="quickBrandName" placeholder="Nombre"></div><div class="modal-footer"><button class="btn btn-primary btn-sm" id="saveQuickBrand">Guardar</button></div></div></div></div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function postQuick(url, name){
+  return $.post(url, {name, csrfmiddlewaretoken:'{{ csrf_token }}'});
+}
+$('#saveQuickCategory').on('click', function(){
+  postQuick("{% url 'inventory:quick_category_create' %}", $('#quickCategoryName').val()).done(function(r){
+    $('#id_category').append(new Option(r.name, r.id, true, true));
+    bootstrap.Modal.getInstance(document.getElementById('quickCategory')).hide();
+  });
+});
+$('#saveQuickBrand').on('click', function(){
+  postQuick("{% url 'inventory:quick_brand_create' %}", $('#quickBrandName').val()).done(function(r){
+    $('#id_brand').append(new Option(r.name, r.id, true, true));
+    bootstrap.Modal.getInstance(document.getElementById('quickBrand')).hide();
+  });
+});
+</script>
+{% endblock %}

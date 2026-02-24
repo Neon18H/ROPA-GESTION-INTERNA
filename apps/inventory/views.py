@@ -2,16 +2,19 @@ import csv
 from io import TextIOWrapper
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, ListView
+from django.views.generic import CreateView, ListView, UpdateView
 
 from apps.common.mixins import RoleRequiredMixin, role_required
 from apps.common.models import OrganizationScopedMixin
-from .forms import ProductForm
+from .forms import BrandForm, CategoryForm, ProductForm, StockMovementForm
 from .models import Brand, Category, KardexEntry, Product, Stock, Variant
+from .services import create_kardex_movement
 
 
 class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
@@ -48,10 +51,46 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
     success_url = reverse_lazy('inventory:products')
     allowed_roles = ('ADMIN', 'BODEGA')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['organization'] = self.request.user.organization
+        return kwargs
+
     def form_valid(self, form):
         form.instance.organization = self.request.user.organization
+        response = super().form_valid(form)
+        initial_qty = form.cleaned_data.get('initial_qty') or 0
+        if initial_qty > 0:
+            variant = self.object.variant_set.first()
+            if variant:
+                create_kardex_movement(
+                    organization=self.request.user.organization,
+                    user=self.request.user,
+                    variant=variant,
+                    movement_type=KardexEntry.Type.IN,
+                    qty=initial_qty,
+                    unit_cost=form.cleaned_data.get('initial_cost') or 0,
+                    note='Ingreso inicial al crear producto',
+                    reference=f'product:{self.object.id}',
+                )
         messages.success(self.request, 'Producto creado')
-        return super().form_valid(form)
+        return response
+
+
+class ProductUpdateView(RoleRequiredMixin, UpdateView):
+    model = Product
+    form_class = ProductForm
+    template_name = 'inventory/product_form.html'
+    success_url = reverse_lazy('inventory:products')
+    allowed_roles = ('ADMIN', 'BODEGA')
+
+    def get_queryset(self):
+        return Product.objects.filter(organization=self.request.user.organization)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['organization'] = self.request.user.organization
+        return kwargs
 
 
 @role_required('ADMIN', 'BODEGA')
@@ -71,26 +110,30 @@ def inventory_view(request):
         variants = variants.filter(stock__quantity__lte=models.F('stock__min_alert'))
 
     if request.method == 'POST':
-        variant = get_object_or_404(Variant, id=request.POST.get('variant_id'), product__organization=org)
-        delta = int(request.POST.get('adjust_qty', 0))
-        if delta != 0:
-            entry = KardexEntry.objects.create(
+        form = StockMovementForm(request.POST, organization=org)
+        if form.is_valid():
+            qty = form.cleaned_data['qty']
+            movement_type = form.cleaned_data['movement_type']
+            if movement_type == KardexEntry.Type.ADJUST and request.POST.get('direction') == 'minus':
+                qty = -qty
+            create_kardex_movement(
                 organization=org,
-                variant=variant,
-                type=KardexEntry.Type.ADJUST,
-                qty=delta,
-                reference='manual-adjust',
-                note='Ajuste manual desde inventario',
-                created_by=request.user,
+                user=request.user,
+                variant=form.cleaned_data['variant'],
+                movement_type=movement_type,
+                qty=qty,
+                unit_cost=form.cleaned_data.get('unit_cost') or 0,
+                note=form.cleaned_data.get('note') or 'Ajuste manual desde inventario',
+                reference='inventory-manual',
             )
-            entry.apply_to_stock()
-            messages.success(request, f'Ajuste aplicado a {variant.product.name} ({delta:+d}).')
+            messages.success(request, 'Movimiento aplicado correctamente.')
         return redirect('inventory:inventory')
 
     context = {
         'variants': variants,
         'categories': Category.objects.filter(organization=org),
         'brands': Brand.objects.filter(organization=org),
+        'movement_form': StockMovementForm(organization=org),
         'low_stock_count': Stock.objects.filter(
             variant__product__organization=org, quantity__lte=models.F('min_alert')
         ).count(),
@@ -115,3 +158,42 @@ def import_products(request):
         messages.success(request, 'Importación completada')
         return redirect('inventory:products')
     return render(request, 'inventory/import.html')
+
+
+@role_required('ADMIN', 'BODEGA')
+def catalogs_view(request):
+    org = request.user.organization
+    return render(
+        request,
+        'inventory/catalogs.html',
+        {
+            'categories': Category.objects.filter(organization=org).order_by('name'),
+            'brands': Brand.objects.filter(organization=org).order_by('name'),
+            'category_form': CategoryForm(),
+            'brand_form': BrandForm(),
+        },
+    )
+
+
+@login_required
+def quick_create_category(request):
+    if request.method == 'POST':
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.organization = request.user.organization
+            obj.save()
+            return JsonResponse({'ok': True, 'id': obj.id, 'name': obj.name})
+    return JsonResponse({'ok': False}, status=400)
+
+
+@login_required
+def quick_create_brand(request):
+    if request.method == 'POST':
+        form = BrandForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.organization = request.user.organization
+            obj.save()
+            return JsonResponse({'ok': True, 'id': obj.id, 'name': obj.name})
+    return JsonResponse({'ok': False}, status=400)

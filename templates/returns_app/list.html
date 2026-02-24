@@ -1,1 +1,6 @@
-{% extends 'base.html' %}{% block content %}<h2>Devoluciones</h2>{% for r in object_list %}<div>{{ r.sale.number }} - {{ r.type }}</div>{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block page_title %}Devoluciones{% endblock %}
+{% block content %}
+<div class="mb-2"><a class="btn btn-primary btn-sm" href="{% url 'returns:create' %}">Nueva devolución</a></div>
+<div class="card"><div class="card-body"><table class="table table-sm"><thead><tr><th>ID</th><th>Venta</th><th>Motivo</th></tr></thead><tbody>{% for r in object_list %}<tr><td>{{ r.id }}</td><td>#{{ r.sale.number }}</td><td>{{ r.reason }}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}
