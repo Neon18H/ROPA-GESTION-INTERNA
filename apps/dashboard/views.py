@@ -8,6 +8,9 @@ from apps.inventory.models import Stock
 from apps.sales.models import Sale, SaleItem
 
 
+ZERO_DEC = Value(0, output_field=DecimalField(max_digits=14, decimal_places=2))
+
+
 class DashboardView(OrganizationRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
 
@@ -33,7 +36,7 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
         inventory_cost_expr = Coalesce(
             F('avg_cost'),
             F('last_cost'),
-            Value(0, output_field=decimal_output),
+            ZERO_DEC,
             output_field=decimal_output,
         )
         inventory_value_expr = ExpressionWrapper(F('quantity') * inventory_cost_expr, output_field=decimal_output)
@@ -42,7 +45,7 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
             .aggregate(
                 total=Coalesce(
                     Sum(inventory_value_expr, output_field=decimal_output),
-                    Value(0, output_field=decimal_output),
+                    ZERO_DEC,
                     output_field=decimal_output,
                 )
             )['total']
@@ -52,8 +55,8 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
 
         ctx.update(
             {
-                'sales_today_total': sales_today.aggregate(total=Coalesce(Sum('total'), 0))['total'],
-                'sales_month_total': sales_month.aggregate(total=Coalesce(Sum('total'), 0))['total'],
+                'sales_today_total': sales_today.aggregate(total=Coalesce(Sum('total'), ZERO_DEC))['total'],
+                'sales_month_total': sales_month.aggregate(total=Coalesce(Sum('total'), ZERO_DEC))['total'],
                 'sales_today_count': sales_today.count(),
                 'low_stock_count': low_stock_count,
                 'top_products': top_products,
