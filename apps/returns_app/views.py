@@ -4,6 +4,7 @@ from django.shortcuts import redirect, render
 from django.views.generic import ListView
 
 from apps.common.mixins import RoleRequiredMixin, role_required
+from apps.inventory.models import Variant
 from .forms import ReturnForm
 from .models import Return, ReturnItem
 from .services import process_return
@@ -30,8 +31,9 @@ def return_create_view(request):
                 return_order.organization = org
                 return_order.created_by = request.user
                 return_order.save()
+                org_variant_ids = set(Variant.objects.filter(product__organization=org).values_list('id', flat=True))
                 for variant_id, qty, action in rows:
-                    if not variant_id:
+                    if not variant_id or int(variant_id) not in org_variant_ids:
                         continue
                     ReturnItem.objects.create(return_order=return_order, variant_id=variant_id, qty=int(qty), action=action)
                 process_return(return_order, request.user)
@@ -40,7 +42,5 @@ def return_create_view(request):
     else:
         form = ReturnForm(organization=org)
 
-    from apps.inventory.models import Variant
-
-    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product')[:50]
-    return render(request, 'returns_app/form.html', {'form': form, 'variants': variants})
+    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product')[:100]
+    return render(request, 'returns/form.html', {'form': form, 'variants': variants})

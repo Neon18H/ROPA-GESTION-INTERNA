@@ -1,39 +1,15 @@
 {% extends 'base.html' %}
-{% block page_title %}Producto{% endblock %}
 {% block content %}
-<div class="card">
-  <div class="card-header d-flex justify-content-between"><span>Producto</span><a class="btn btn-sm btn-outline-secondary" href="{% url 'inventory:catalogs' %}">Catálogos</a></div>
-  <div class="card-body">
-    <form method="post">{% csrf_token %}
-      {{ form.as_p }}
-      <div class="d-flex gap-2">
-        <button class="btn btn-primary btn-sm">Guardar</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button>
-      </div>
-    </form>
-  </div>
+<div class="card p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Producto</h5><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:categories' %}">Categorías</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:brands' %}">Marcas</a></div></div>
+  <form method="post">{% csrf_token %}{{ form.as_p }}
+    <div class="d-flex gap-2"><button class="btn btn-dark btn-sm">Guardar</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button></div>
+  </form>
 </div>
-
-<div class="modal fade" id="quickCategory" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Nueva categoría</h5></div><div class="modal-body"><input class="form-control" id="quickCategoryName" placeholder="Nombre"></div><div class="modal-footer"><button class="btn btn-primary btn-sm" id="saveQuickCategory">Guardar</button></div></div></div></div>
-<div class="modal fade" id="quickBrand" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Nueva marca</h5></div><div class="modal-body"><input class="form-control" id="quickBrandName" placeholder="Nombre"></div><div class="modal-footer"><button class="btn btn-primary btn-sm" id="saveQuickBrand">Guardar</button></div></div></div></div>
+<div class="modal fade" id="quickCategory" tabindex="-1"><div class="modal-dialog"><div class="modal-content p-3"><input class="form-control" id="quickCategoryName" placeholder="Categoría"><button class="btn btn-dark btn-sm mt-2" id="saveQuickCategory">Guardar</button></div></div></div>
+<div class="modal fade" id="quickBrand" tabindex="-1"><div class="modal-dialog"><div class="modal-content p-3"><input class="form-control" id="quickBrandName" placeholder="Marca"><button class="btn btn-dark btn-sm mt-2" id="saveQuickBrand">Guardar</button></div></div></div>
 {% endblock %}
-{% block extra_js %}
-<script>
-function postQuick(url, name){
-  return $.post(url, {name, csrfmiddlewaretoken:'{{ csrf_token }}'});
-}
-$('#saveQuickCategory').on('click', function(){
-  postQuick("{% url 'inventory:quick_category_create' %}", $('#quickCategoryName').val()).done(function(r){
-    $('#id_category').append(new Option(r.name, r.id, true, true));
-    bootstrap.Modal.getInstance(document.getElementById('quickCategory')).hide();
-  });
-});
-$('#saveQuickBrand').on('click', function(){
-  postQuick("{% url 'inventory:quick_brand_create' %}", $('#quickBrandName').val()).done(function(r){
-    $('#id_brand').append(new Option(r.name, r.id, true, true));
-    bootstrap.Modal.getInstance(document.getElementById('quickBrand')).hide();
-  });
-});
-</script>
-{% endblock %}
+{% block extra_js %}<script>
+$('#saveQuickCategory').on('click', function(){ $.post("{% url 'inventory:quick_category_create' %}", {name: $('#quickCategoryName').val(), csrfmiddlewaretoken:'{{ csrf_token }}'}).done(function(r){ $('#id_category').append(new Option(r.name, r.id, true, true)).trigger('change'); bootstrap.Modal.getInstance(document.getElementById('quickCategory')).hide();});});
+$('#saveQuickBrand').on('click', function(){ $.post("{% url 'inventory:quick_brand_create' %}", {name: $('#quickBrandName').val(), csrfmiddlewaretoken:'{{ csrf_token }}'}).done(function(r){ $('#id_brand').append(new Option(r.name, r.id, true, true)).trigger('change'); bootstrap.Modal.getInstance(document.getElementById('quickBrand')).hide();});});
+</script>{% endblock %}

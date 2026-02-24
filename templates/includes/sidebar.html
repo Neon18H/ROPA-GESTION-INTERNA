@@ -1,15 +1,19 @@
-<aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="light">
-  <div class="container-fluid">
-    <h1 class="navbar-brand">ROPA ERP</h1>
-    <div class="collapse navbar-collapse show"><ul class="navbar-nav pt-lg-3">
-      <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:index' %}">Dashboard</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'inventory:products' %}">Productos</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'inventory:inventory' %}">Inventario</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'inventory:catalogs' %}">Categorías y Marcas</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'purchases:list' %}">Compras</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'purchases:suppliers' %}">Proveedores</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'returns:list' %}">Devoluciones</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'accounts:user_list' %}">Usuarios</a></li>
-    </ul></div>
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-dot"></div>
+    <div>
+      <strong>ROPA Cloud</strong>
+      <small class="d-block text-secondary">Enterprise</small>
+    </div>
   </div>
+  <nav class="nav flex-column gap-1">
+    <a class="nav-link {% if request.resolver_match.app_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:index' %}"><i class="bi bi-grid"></i>Dashboard</a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'inventory' %}active{% endif %}" href="{% url 'inventory:inventory' %}"><i class="bi bi-box-seam"></i>Inventario</a>
+    <a class="nav-link" href="{% url 'inventory:products' %}"><i class="bi bi-tags"></i>Catálogo</a>
+    <a class="nav-link" href="{% url 'inventory:categories' %}"><i class="bi bi-bookmark"></i>Categorías</a>
+    <a class="nav-link" href="{% url 'inventory:brands' %}"><i class="bi bi-award"></i>Marcas</a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'purchases' %}active{% endif %}" href="{% url 'purchases:list' %}"><i class="bi bi-bag"></i>Compras</a>
+    <a class="nav-link {% if request.resolver_match.app_name == 'returns' %}active{% endif %}" href="{% url 'returns:list' %}"><i class="bi bi-arrow-counterclockwise"></i>Devoluciones</a>
+    <a class="nav-link" href="{% url 'accounts:user_list' %}"><i class="bi bi-people"></i>Usuarios</a>
+  </nav>
 </aside>

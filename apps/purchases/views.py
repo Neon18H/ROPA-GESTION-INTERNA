@@ -8,7 +8,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
 
-from apps.common.mixins import RoleRequiredMixin, role_required
+from apps.common.mixins import RoleRequiredMixin, organization_required, role_required
+from apps.inventory.models import Variant
 from .forms import PurchaseOrderForm, SupplierForm
 from .models import PurchaseItem, PurchaseOrder, Supplier
 from .services import receive_purchase
@@ -45,8 +46,9 @@ def purchase_create_view(request):
                     created_by=request.user,
                 )
                 subtotal = Decimal('0')
+                org_variant_ids = set(Variant.objects.filter(product__organization=org).values_list('id', flat=True))
                 for variant_id, qty, unit_cost in rows:
-                    if not variant_id:
+                    if not variant_id or int(variant_id) not in org_variant_ids:
                         continue
                     line_total = Decimal(qty) * Decimal(unit_cost)
                     subtotal += line_total
@@ -65,15 +67,13 @@ def purchase_create_view(request):
     else:
         form = PurchaseOrderForm(organization=org)
 
-    from apps.inventory.models import Variant
-
-    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product')[:50]
-    return render(request, 'purchases/purchase_form.html', {'form': form, 'variants': variants})
+    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product')[:100]
+    return render(request, 'purchases/order_form.html', {'form': form, 'variants': variants})
 
 
 class PurchaseDetailView(RoleRequiredMixin, DetailView):
     model = PurchaseOrder
-    template_name = 'purchases/purchase_detail.html'
+    template_name = 'purchases/order_detail.html'
     allowed_roles = ('ADMIN', 'BODEGA')
 
     def get_queryset(self):
@@ -99,6 +99,7 @@ def suppliers_view(request):
 
 
 @login_required
+@organization_required
 def quick_create_supplier(request):
     if request.method == 'POST':
         form = SupplierForm(request.POST)

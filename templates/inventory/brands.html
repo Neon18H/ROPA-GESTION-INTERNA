@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-3"><div class="col-lg-7"><div class="card p-3"><h6>Marcas</h6><table class="table table-modern"><tbody>{% for c in items %}<tr><td>{{ c.name }}</td></tr>{% empty %}<tr><td>Sin marcas</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="col-lg-5"><div class="card p-3"><h6>Nueva marca</h6><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-dark btn-sm">Guardar</button></form></div></div></div>
+{% endblock %}

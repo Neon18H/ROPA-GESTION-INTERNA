@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Inventario{% endblock %}
+{% block content %}
+<div class="card p-3 mb-3">
+  <form class="row g-2" method="get">
+    <div class="col-md-3"><select name="category" class="form-select form-select-sm"><option value="">Categoría</option>{% for c in categories %}<option value="{{ c.id }}" {% if selected_category == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><select name="brand" class="form-select form-select-sm"><option value="">Marca</option>{% for b in brands %}<option value="{{ b.id }}" {% if selected_brand == b.id|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="low_stock" value="1" {% if low_stock %}checked{% endif %}><label class="form-check-label">Bajo stock</label></div></div>
+    <div class="col-md-2"><button class="btn btn-outline-secondary btn-sm w-100">Filtrar</button></div>
+  </form>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card p-3"><div class="d-flex justify-content-between mb-2"><strong>Inventario por variante</strong><span class="badge bg-warning-subtle text-dark">Bajo stock: {{ low_stock_count }}</span></div>
+    <table id="inventoryTable" class="table table-modern">
+      <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th>Stock</th><th>Estado</th></tr></thead><tbody>
+        {% for v in variants %}<tr><td>{{ v.product.sku }}</td><td>{{ v.product.name }}</td><td>{{ v.size }} / {{ v.color }}</td><td>{{ v.stock.quantity|default:0 }}</td><td>{% with qty=v.stock.quantity|default:0 min=v.stock.min_alert|default:3 %}{% if qty <= 0 %}<span class="badge text-bg-danger">Agotado</span>{% elif qty <= min %}<span class="badge text-bg-warning">Bajo</span>{% else %}<span class="badge text-bg-success">OK</span>{% endif %}{% endwith %}</td></tr>{% endfor %}
+      </tbody></table></div></div>
+  <div class="col-lg-4"><div class="card p-3"><strong class="mb-2">Kardex: Ingreso/Ajuste</strong><form method="post" class="row g-2">{% csrf_token %}
+    <div class="col-12">{{ movement_form.variant }}</div><div class="col-6">{{ movement_form.qty }}</div><div class="col-6">{{ movement_form.movement_type }}</div><div class="col-6">{{ movement_form.unit_cost }}</div><div class="col-6"><select name="direction" class="form-select form-select-sm"><option value="plus">+</option><option value="minus">-</option></select></div>
+    <div class="col-12">{{ movement_form.note }}</div><div class="col-12"><button class="btn btn-dark btn-sm w-100">Aplicar movimiento</button></div>
+  </form></div></div>
+</div>
+{% endblock %}
