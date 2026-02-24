@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, FormView
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -16,7 +17,7 @@ class RegisterOrganizationView(FormView):
     success_url = reverse_lazy('dashboard:index')
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and request.user.organization:
+        if request.user.is_authenticated and getattr(request.user, 'organization_id', None):
             return redirect('dashboard:index')
         return super().dispatch(request, *args, **kwargs)
 
@@ -27,7 +28,7 @@ class RegisterOrganizationView(FormView):
         return super().form_valid(form)
 
 
-class OrganizationUserListView(OrganizationRequiredMixin, ListView):
+class OrganizationUserListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
     template_name = 'accounts/user_list.html'
     model = User
 

@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
 from apps.common.mixins import OrganizationRequiredMixin
@@ -5,7 +6,7 @@ from apps.inventory.models import Product, Stock
 from apps.sales.models import Sale
 
 
-class DashboardView(OrganizationRequiredMixin, TemplateView):
+class DashboardView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
 
     def get_context_data(self, **kwargs):
