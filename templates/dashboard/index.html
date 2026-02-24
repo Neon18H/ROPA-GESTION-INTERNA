@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Dashboard · ROPA SaaS{% endblock %}
+{% block title %}Dashboard · ERP Cloud{% endblock %}
 {% block page_title %}Dashboard Ejecutivo{% endblock %}
 {% block breadcrumbs %}
 <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
@@ -7,35 +7,17 @@
 {% endblock %}
 {% block content %}
 <div class="row g-3 mb-4">
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><span>Ventas hoy</span><h3>{{ ventas_hoy }}</h3><i class="fas fa-calendar-day"></i></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><span>Ventas mes</span><h3>{{ ventas_mes }}</h3><i class="fas fa-coins"></i></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><span>Inventario valorizado</span><h3>{{ inventario_valorizado }}</h3><i class="fas fa-warehouse"></i></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><span>Stock bajo</span><h3>{{ stock_bajo }}</h3><i class="fas fa-triangle-exclamation"></i></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy</small><h3 data-kpi="{{ ventas_hoy }}">0</h3><i class="fa-solid fa-calendar-day"></i></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes</small><h3 data-kpi="{{ ventas_mes }}">0</h3><i class="fa-solid fa-coins"></i></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Inventario</small><h3 data-kpi="{{ inventario_valorizado }}">0</h3><i class="fa-solid fa-warehouse"></i></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Stock bajo</small><h3 data-kpi="{{ stock_bajo }}">0</h3><i class="fa-solid fa-triangle-exclamation"></i></div></div></div>
 </div>
 <div class="row g-3">
-  <div class="col-xl-8">
-    <div class="card glass-card">
-      <div class="card-header border-0"><h3 class="card-title">Ventas mensuales</h3></div>
-      <div class="card-body"><canvas id="monthlySales"></canvas></div>
-    </div>
-  </div>
-  <div class="col-xl-4">
-    <div class="card glass-card">
-      <div class="card-header border-0"><h3 class="card-title">Top productos</h3></div>
-      <div class="card-body p-0">
-        <table class="table table-dark table-hover mb-0">
-          <thead><tr><th>SKU</th><th>Producto</th></tr></thead>
-          <tbody>
-          {% for p in top_productos %}<tr><td>{{ p.sku }}</td><td>{{ p.name }}</td></tr>{% empty %}<tr><td colspan="2">Sin datos</td></tr>{% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  <div class="col-xl-8"><div class="card glass-card"><div class="card-header border-0"><h3 class="card-title">Ventas últimos 30 días</h3></div><div class="card-body"><canvas id="sales30Chart" height="120"></canvas></div></div></div>
+  <div class="col-xl-4"><div class="card glass-card"><div class="card-header border-0"><h3 class="card-title">Top productos</h3></div><div class="card-body p-0">
+    <table class="table table-hover mb-0 data-table-saas"><thead><tr><th>SKU</th><th>Producto</th></tr></thead><tbody>
+      {% for p in top_productos %}<tr><td>{{ p.sku }}</td><td>{{ p.name }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center py-4"><i class="fa-regular fa-face-smile me-1"></i>No hay productos destacados aún.</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div></div>
 </div>
-{% endblock %}
-{% block extra_js %}
-<script>
-new Chart(document.getElementById('monthlySales'), {type:'line', data:{labels:['Ene','Feb','Mar','Abr','May','Jun'], datasets:[{label:'Ventas', data:[12,19,9,15,22,18], borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,.2)', tension:.35, fill:true}]}, options:{plugins:{legend:{labels:{color:'#d1d5db'}}}, scales:{x:{ticks:{color:'#9ca3af'}}, y:{ticks:{color:'#9ca3af'}}}}})
-</script>
 {% endblock %}

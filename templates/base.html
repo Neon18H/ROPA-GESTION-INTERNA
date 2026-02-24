@@ -4,7 +4,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}ROPA SaaS · Panel{% endblock %}</title>
+  <title>{% block title %}ERP Interno{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.6.0/css/all.min.css">
@@ -18,19 +21,9 @@
 
   <div class="content-wrapper">
     <div class="content-header pt-3 pb-0">
-      <div class="container-fluid">
-        <div class="row mb-2">
-          <div class="col-sm-6">
-            <h1 class="m-0">{% block page_title %}Panel de control{% endblock %}</h1>
-          </div>
-          <div class="col-sm-6">
-            <ol class="breadcrumb float-sm-right glass-breadcrumb">
-              {% block breadcrumbs %}
-              <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
-              {% endblock %}
-            </ol>
-          </div>
-        </div>
+      <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h1 class="m-0">{% block page_title %}Panel{% endblock %}</h1>
+        {% include 'includes/breadcrumb.html' %}
       </div>
     </div>
 
@@ -42,12 +35,14 @@
     </section>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="{% static 'js/app.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

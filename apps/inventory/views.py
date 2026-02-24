@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import CreateView, ListView
 
 from apps.common.mixins import OrganizationRequiredMixin, organization_required
@@ -14,7 +15,7 @@ from .forms import ProductForm
 from .models import Brand, Category, Product, Stock, Variant
 
 
-class ProductListView(OrganizationRequiredMixin, OrganizationScopedMixin, ListView):
+class ProductListView(LoginRequiredMixin, OrganizationRequiredMixin, OrganizationScopedMixin, ListView):
     model = Product
     template_name = 'inventory/product_list.html'
 
@@ -54,7 +55,7 @@ class ProductListView(OrganizationRequiredMixin, OrganizationScopedMixin, ListVi
         return context
 
 
-class ProductCreateView(OrganizationRequiredMixin, CreateView):
+class ProductCreateView(LoginRequiredMixin, OrganizationRequiredMixin, CreateView):
     model = Product
     form_class = ProductForm
     template_name = 'inventory/product_form.html'
