@@ -6,9 +6,15 @@ from apps.accounts.models import OrganizationScopedModel, User
 class Category(OrganizationScopedModel):
     name = models.CharField(max_length=120)
 
+    def __str__(self):
+        return self.name
+
 
 class Brand(OrganizationScopedModel):
     name = models.CharField(max_length=120)
+
+    def __str__(self):
+        return self.name
 
 
 class Product(OrganizationScopedModel):
@@ -21,6 +27,9 @@ class Product(OrganizationScopedModel):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['organization', 'sku'], name='uq_org_sku')]
+
+    def __str__(self):
+        return f'{self.sku} - {self.name}'
 
 
 class Variant(models.Model):

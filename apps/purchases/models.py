@@ -14,6 +14,9 @@ class Supplier(OrganizationScopedModel):
     class Meta:
         constraints = [models.UniqueConstraint(fields=['organization', 'name'], name='uq_org_supplier_name')]
 
+    def __str__(self):
+        return self.name
+
 
 class PurchaseOrder(OrganizationScopedModel):
     class Status(models.TextChoices):
@@ -29,6 +32,9 @@ class PurchaseOrder(OrganizationScopedModel):
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return str(self.number)
 
 
 class PurchaseItem(models.Model):

@@ -9,9 +9,15 @@
 
   <nav class="nav flex-column sidebar-nav px-2 pb-3" id="{{ menu_id|default:'sidebarMenu' }}">
     <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'dashboard:index' %}"><i class="bi bi-grid"></i><span>Dashboard</span></a>
+
     <a class="nav-link {% if request.path|slice:':11' == '/inventory/' %}active{% endif %}" href="{% url 'inventory:inventory' %}"><i class="bi bi-box-seam"></i><span>Inventario</span></a>
+    <a class="nav-link ps-4 {% if request.path|slice:':20' == '/inventory/products/' %}active{% endif %}" href="{% url 'inventory:products' %}"><i class="bi bi-box"></i><span>Productos</span></a>
+
     <a class="nav-link {% if request.path|slice:':7' == '/sales/' %}active{% endif %}" href="{% url 'sales:list' %}"><i class="bi bi-cart3"></i><span>Ventas</span></a>
+
     <a class="nav-link {% if request.path|slice:':11' == '/purchases/' %}active{% endif %}" href="{% url 'purchases:list' %}"><i class="bi bi-bag-check"></i><span>Compras</span></a>
+    <a class="nav-link ps-4 {% if request.path|slice:':21' == '/purchases/suppliers/' %}active{% endif %}" href="{% url 'purchases:suppliers' %}"><i class="bi bi-truck"></i><span>Proveedores</span></a>
+
     <a class="nav-link {% if request.path|slice:':11' == '/customers/' %}active{% endif %}" href="{% url 'customers:list' %}"><i class="bi bi-people"></i><span>Clientes</span></a>
     <a class="nav-link {% if request.path|slice:':9' == '/finance/' %}active{% endif %}" href="{% url 'finance:summary' %}"><i class="bi bi-cash-stack"></i><span>Finanzas</span></a>
     <a class="nav-link {% if request.path|slice:':9' == '/reports/' %}active{% endif %}" href="{% url 'reports:index' %}"><i class="bi bi-bar-chart-line"></i><span>Reportes</span></a>

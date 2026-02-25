@@ -19,6 +19,7 @@ class PurchaseOrderForm(forms.ModelForm):
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['supplier'].queryset = Supplier.objects.filter(organization=organization, is_active=True).order_by('name')
+        self.fields['supplier'].label_from_instance = lambda supplier: supplier.name
 
 
 class PurchaseItemForm(forms.Form):
