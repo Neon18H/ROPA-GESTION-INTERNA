@@ -30,8 +30,8 @@ class BaseXlsxReportView(RoleRequiredMixin, View):
     filename = 'report.xlsx'
 
     def get_store_name(self, org):
-        settings = StoreSettings.objects.filter(organization=org).first()
-        return getattr(settings, 'organization', org).name if settings else org.name
+        settings = StoreSettings.objects.using('settings_db').filter(organization_id=org.id).first()
+        return settings.billing_legal_name or org.name if settings else org.name
 
     def build_workbook(self, org):
         raise NotImplementedError
