@@ -14,18 +14,27 @@
 <div class="card glass-card">
   <div class="card-body table-responsive">
     <table id="productsTable" class="table table-hover align-middle mb-0 data-table-saas">
-      <thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th class="d-none d-md-table-cell">Foto</th><th>SKU</th><th>Producto</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
       <tbody>
       {% for p in object_list %}
       {% with stock=p.total_stock|default:0 %}
       <tr>
+        <td class="d-none d-md-table-cell">
+          {% if p.image %}
+            <img src="{{ p.image.url }}" alt="{{ p.name }}" class="rounded shadow-sm" style="width: 56px; height: 56px; object-fit: cover;">
+          {% else %}
+            <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+              <i class="bi bi-image"></i>
+            </div>
+          {% endif %}
+        </td>
         <td>{{ p.sku }}</td><td>{{ p.name }}</td><td>{{ p.category.name|default:'-' }}</td><td>{{ p.brand.name|default:'-' }}</td><td>{{ stock }}</td>
         <td>{% if stock <= 3 %}<span class="badge bg-danger-subtle text-danger">Bajo</span>{% elif stock <= 8 %}<span class="badge bg-warning-subtle text-warning">Medio</span>{% else %}<span class="badge bg-success-subtle text-success">Óptimo</span>{% endif %}</td>
         <td><a href="{% url 'inventory:inventory' %}" class="btn btn-sm btn-outline-info"><i class="fa-solid fa-screwdriver-wrench me-1"></i>Ajuste rápido</a></td>
       </tr>
       {% endwith %}
       {% empty %}
-      <tr><td colspan="7" class="text-center py-5"><i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>No hay productos cargados todavía.</td></tr>
+      <tr><td colspan="8" class="text-center py-5"><i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>No hay productos cargados todavía.</td></tr>
       {% endfor %}
       </tbody>
     </table>

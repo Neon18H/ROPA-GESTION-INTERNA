@@ -2,7 +2,7 @@
 {% block content %}
 <div class="card p-3">
   <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Producto</h5><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:categories' %}">Categorías</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:brands' %}">Marcas</a></div></div>
-  <form method="post">{% csrf_token %}
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
     {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
     {% endif %}
@@ -12,6 +12,22 @@
       <div class="col-md-6">{{ form.category.label_tag }}{{ form.category }}{{ form.category.errors }}</div>
       <div class="col-md-6">{{ form.brand.label_tag }}{{ form.brand }}{{ form.brand.errors }}</div>
       <div class="col-12">{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}</div>
+      <div class="col-12 col-md-6">
+        {{ form.image.label_tag }}
+        {{ form.image }}
+        {{ form.image.errors }}
+        <div class="form-text">Formatos permitidos: JPG, PNG, WEBP · máximo 5MB.</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label d-block">Vista previa</label>
+        {% if form.instance.image %}
+          <img src="{{ form.instance.image.url }}" alt="Imagen de producto" class="img-fluid rounded shadow-sm" style="max-height: 140px; object-fit: cover;">
+        {% else %}
+          <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="height: 140px;">
+            <span><i class="bi bi-image me-2"></i>Sin foto</span>
+          </div>
+        {% endif %}
+      </div>
       {% if form.initial_qty %}<div class="col-md-3">{{ form.initial_qty.label_tag }}{{ form.initial_qty }}{{ form.initial_qty.errors }}{% if form.initial_qty.help_text %}<div class="form-text">{{ form.initial_qty.help_text }}</div>{% endif %}</div>{% endif %}
       {% if form.initial_cost %}<div class="col-md-3">{{ form.initial_cost.label_tag }}{{ form.initial_cost }}{{ form.initial_cost.errors }}{% if form.initial_cost.help_text %}<div class="form-text">{{ form.initial_cost.help_text }}</div>{% endif %}</div>{% endif %}
       <div class="col-md-3 d-flex align-items-end"><div class="form-check">{{ form.is_active }} {{ form.is_active.label_tag }}</div>{{ form.is_active.errors }}</div>
