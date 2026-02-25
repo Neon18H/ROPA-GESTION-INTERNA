@@ -35,6 +35,8 @@ class Variant(models.Model):
     gender = models.CharField(max_length=12, choices=Gender.choices, default=Gender.UNISEX)
     barcode = models.CharField(max_length=64, blank=True)
     is_active = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
 
 class Stock(models.Model):
