@@ -10,7 +10,7 @@ class ProductCreateForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ['sku', 'name', 'category', 'brand', 'description', 'is_active', 'initial_qty', 'initial_cost']
+        fields = ['sku', 'name', 'category', 'brand', 'description', 'image', 'is_active', 'initial_qty', 'initial_cost']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -19,6 +19,7 @@ class ProductCreateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
+        self._apply_bootstrap_styles()
 
         if self.instance and self.instance.pk:
             self.fields['initial_qty'].required = False
@@ -51,11 +52,22 @@ class ProductCreateForm(forms.ModelForm):
             cleaned_data['initial_cost'] = initial_cost or 0
         return cleaned_data
 
+    def clean_image(self):
+        return validate_product_image(self.cleaned_data.get('image'))
+
+    def _apply_bootstrap_styles(self):
+        text_fields = ('sku', 'name', 'category', 'brand', 'description', 'initial_qty', 'initial_cost', 'image')
+        for field_name in text_fields:
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['image'].widget.attrs.update({'accept': '.jpg,.jpeg,.png,.webp,image/*', 'capture': 'environment'})
+        self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
+
 
 class ProductUpdateForm(forms.ModelForm):
     class Meta:
         model = Product
-        fields = ['sku', 'name', 'category', 'brand', 'description', 'is_active']
+        fields = ['sku', 'name', 'category', 'brand', 'description', 'image', 'is_active']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -64,6 +76,11 @@ class ProductUpdateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
+        text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image')
+        for field_name in text_fields:
+            self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['image'].widget.attrs.update({'accept': '.jpg,.jpeg,.png,.webp,image/*', 'capture': 'environment'})
+        self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
 
     def clean_sku(self):
         sku = (self.cleaned_data.get('sku') or '').strip()
@@ -78,6 +95,25 @@ class ProductUpdateForm(forms.ModelForm):
             raise forms.ValidationError('Ya existe un producto con este SKU en la organización actual.')
 
         return sku
+
+    def clean_image(self):
+        return validate_product_image(self.cleaned_data.get('image'))
+
+
+def validate_product_image(image):
+    if not image:
+        return image
+
+    allowed_types = {'image/jpeg', 'image/png', 'image/webp'}
+    content_type = getattr(image, 'content_type', '')
+    if content_type not in allowed_types:
+        raise forms.ValidationError('Formato no permitido. Usa JPG, PNG o WEBP.')
+
+    max_size_bytes = 5 * 1024 * 1024
+    if image.size > max_size_bytes:
+        raise forms.ValidationError('La imagen no puede superar 5MB.')
+
+    return image
 
 
 class BaseVariantUpdateInlineFormSet(BaseInlineFormSet):

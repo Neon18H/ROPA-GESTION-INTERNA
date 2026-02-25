@@ -1,6 +1,17 @@
+from pathlib import Path
+from uuid import uuid4
+
 from django.db import models
 from django.db.models import F
 from apps.accounts.models import OrganizationScopedModel, User
+from apps.common.storage_backends import PublicMediaStorage
+
+
+def product_image_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower() or '.jpg'
+    safe_filename = f'{uuid4().hex}{extension}'
+    product_id = instance.id or 'new'
+    return f'org_{instance.organization_id}/products/{product_id}/{safe_filename}'
 
 
 class Category(OrganizationScopedModel):
@@ -23,6 +34,7 @@ class Product(OrganizationScopedModel):
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL)
     brand = models.ForeignKey(Brand, null=True, blank=True, on_delete=models.SET_NULL)
     description = models.TextField(blank=True)
+    image = models.ImageField(upload_to=product_image_upload_to, storage=PublicMediaStorage(), null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
