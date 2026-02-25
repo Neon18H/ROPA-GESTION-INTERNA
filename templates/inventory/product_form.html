@@ -19,20 +19,49 @@
 
     {% if variant_formset %}
     <hr>
-    <h6>Variantes (talla/color/género/código de barras)</h6>
-    {{ variant_formset.management_form }}
-    <div id="variantRows" class="d-flex flex-column gap-2">
-      {% for vform in variant_formset %}
-      <div class="row g-2 align-items-end border rounded p-2">
-        <div class="col-md-3">{{ vform.size.label_tag }}{{ vform.size }}</div>
-        <div class="col-md-3">{{ vform.color.label_tag }}{{ vform.color }}</div>
-        <div class="col-md-3">{{ vform.gender.label_tag }}{{ vform.gender }}</div>
-        <div class="col-md-3">{{ vform.barcode.label_tag }}{{ vform.barcode }}</div>
-        {% if vform.DELETE %}<div class="col-12"><div class="form-check">{{ vform.DELETE }} {{ vform.DELETE.label_tag }}</div></div>{% endif %}
-      </div>
-      {% endfor %}
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Variantes (Tallas/Colores/Género)</h6>
+      <button type="button" class="btn btn-sm btn-outline-dark" id="addVariantRow">Agregar variante</button>
     </div>
-    <p class="text-muted small mt-2 mb-0">Si no agregas variantes se creará una por defecto: UNICA/UNICO/UNISEX.</p>
+    {% if variant_formset.non_form_errors %}
+      <div class="alert alert-danger">{{ variant_formset.non_form_errors }}</div>
+    {% endif %}
+    {{ variant_formset.management_form }}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" id="variantTable">
+        <thead>
+          <tr>
+            <th>Talla</th>
+            <th>Color</th>
+            <th>Género</th>
+            <th>Barcode</th>
+            <th>Precio</th>
+            <th>Activo</th>
+            <th>Eliminar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vform in variant_formset %}
+          <tr class="variant-row">
+            {% for hidden in vform.hidden_fields %}{{ hidden }}{% endfor %}
+            <td>{{ vform.size }}{{ vform.size.errors }}</td>
+            <td>{{ vform.color }}{{ vform.color.errors }}</td>
+            <td>{{ vform.gender }}{{ vform.gender.errors }}</td>
+            <td>{{ vform.barcode }}{{ vform.barcode.errors }}</td>
+            <td>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">$</span>
+                {{ vform.price }}
+              </div>
+              {{ vform.price.errors }}
+            </td>
+            <td>{{ vform.is_active }}{{ vform.is_active.errors }}</td>
+            <td>{% if vform.DELETE %}{{ vform.DELETE }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% endif %}
 
     <div class="d-flex gap-2 mt-3"><button class="btn btn-dark btn-sm">Guardar</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button></div>
@@ -44,6 +73,31 @@
 {% block extra_js %}<script>
 $(function(){
   $('#id_initial_qty:disabled, #id_initial_cost:disabled').addClass('form-control-plaintext bg-light border rounded px-2 py-1 text-muted').attr('readonly', true);
+
+  const tableBody = $('#variantTable tbody');
+  const totalForms = $('#id_variants-TOTAL_FORMS');
+
+  $('#addVariantRow').on('click', function(){
+    const formIdx = parseInt(totalForms.val(), 10);
+    const firstRow = tableBody.find('tr.variant-row:first');
+    if (!firstRow.length) return;
+    const newRow = firstRow.clone();
+    newRow.find('input, select, textarea').each(function(){
+      const name = $(this).attr('name');
+      const id = $(this).attr('id');
+      if (name) $(this).attr('name', name.replace(/variants-(\d+)-/, `variants-${formIdx}-`));
+      if (id) $(this).attr('id', id.replace(/variants-(\d+)-/, `variants-${formIdx}-`));
+      if ($(this).is(':checkbox')) {
+        $(this).prop('checked', false);
+      } else {
+        $(this).val('');
+      }
+    });
+    newRow.find('input[name$="-gender"]').val('UNISEX');
+    newRow.find('.errorlist').remove();
+    tableBody.append(newRow);
+    totalForms.val(formIdx + 1);
+  });
 });
 
 $('#saveQuickCategory').on('click', function(){ $.post("{% url 'inventory:quick_category_create' %}", {name: $('#quickCategoryName').val(), csrfmiddlewaretoken:'{{ csrf_token }}'}).done(function(r){ $('#id_category').append(new Option(r.name, r.id, true, true)).trigger('change'); bootstrap.Modal.getInstance(document.getElementById('quickCategory')).hide();});});

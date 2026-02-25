@@ -1,5 +1,5 @@
 from django import forms
-from django.forms import formset_factory
+from django.forms import BaseInlineFormSet, formset_factory, inlineformset_factory
 
 from .models import Brand, Category, KardexEntry, Product, Variant
 
@@ -40,7 +40,6 @@ class ProductCreateForm(forms.ModelForm):
 
         return sku
 
-
     def clean(self):
         cleaned_data = super().clean()
         initial_qty = cleaned_data.get('initial_qty') or 0
@@ -77,6 +76,55 @@ class ProductUpdateForm(forms.ModelForm):
         return sku
 
 
+class BaseVariantUpdateInlineFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        combinations = set()
+        seen_barcodes = set()
+
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            cleaned = form.cleaned_data
+            if not cleaned or cleaned.get('DELETE'):
+                continue
+
+            size = (cleaned.get('size') or '').strip().upper() or 'UNICA'
+            color = (cleaned.get('color') or '').strip().upper() or 'UNICO'
+            gender = cleaned.get('gender') or Variant.Gender.UNISEX
+            barcode = (cleaned.get('barcode') or '').strip()
+            price = cleaned.get('price')
+
+            key = (size, color, gender)
+            if key in combinations:
+                raise forms.ValidationError('No puedes repetir la misma combinación talla/color/género para este producto.')
+            combinations.add(key)
+
+            if barcode:
+                normalized = barcode.upper()
+                if normalized in seen_barcodes:
+                    form.add_error('barcode', 'El código de barras está repetido en el formulario.')
+                seen_barcodes.add(normalized)
+                qs = Variant.objects.filter(product=self.instance, barcode__iexact=barcode)
+                if form.instance.pk:
+                    qs = qs.exclude(pk=form.instance.pk)
+                if qs.exists():
+                    form.add_error('barcode', 'Ya existe una variante de este producto con este código de barras.')
+
+            if price is not None and price < 0:
+                form.add_error('price', 'El precio no puede ser negativo.')
+
+
+VariantUpdateFormSet = inlineformset_factory(
+    Product,
+    Variant,
+    fields=['size', 'color', 'gender', 'barcode', 'is_active', 'price'],
+    extra=1,
+    can_delete=True,
+    formset=BaseVariantUpdateInlineFormSet,
+)
+
+
 # Backward-compatible alias used by existing imports for creation flow.
 ProductForm = ProductCreateForm
 
@@ -84,7 +132,7 @@ ProductForm = ProductCreateForm
 class VariantForm(forms.ModelForm):
     class Meta:
         model = Variant
-        fields = ['product', 'size', 'color', 'gender', 'barcode', 'is_active']
+        fields = ['product', 'size', 'color', 'gender', 'barcode', 'is_active', 'price']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)

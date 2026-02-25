@@ -23,6 +23,7 @@ from .forms import (
     StockInForm,
     StockMovementForm,
     VariantInlineFormSet,
+    VariantUpdateFormSet,
 )
 from .models import Brand, Category, KardexEntry, Product, Stock, Variant
 from .services import create_kardex_movement
@@ -153,17 +154,6 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
     template_name = 'inventory/product_form.html'
     allowed_roles = ('ADMIN', 'BODEGA')
 
-    def dispatch(self, request, *args, **kwargs):
-        product = Product.objects.filter(pk=kwargs.get('pk')).only('id', 'organization_id').first()
-        logger.debug(
-            'ProductUpdateView org check user_org_id=%s request_org_id=%s product_org_id=%s product_id=%s',
-            getattr(request.user, 'organization_id', None),
-            getattr(getattr(request, 'organization', None), 'id', None),
-            getattr(product, 'organization_id', None),
-            kwargs.get('pk'),
-        )
-        return super().dispatch(request, *args, **kwargs)
-
     def get_queryset(self):
         org = self.get_org()
         if org is None:
@@ -175,44 +165,73 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
         kwargs['organization'] = self.get_org()
         return kwargs
 
+    def get_variant_formset(self):
+        kwargs = {'instance': self.object, 'prefix': 'variants'}
+        if self.request.method in ('POST', 'PUT'):
+            kwargs['data'] = self.request.POST
+        return VariantUpdateFormSet(**kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['variant_formset'] = kwargs.get('variant_formset') or self.get_variant_formset()
+        return ctx
+
     def get_success_url(self):
         try:
             return reverse('inventory:products')
         except Exception:
             logger.exception('No se pudo resolver inventory:products; fallback a inventory:inventory.')
-            try:
-                return reverse('inventory:inventory')
-            except Exception:
-                logger.exception('No se pudo resolver inventory:inventory; fallback a /inventory/.')
-                return '/inventory/'
+            return '/inventory/'
 
     def post(self, request, *args, **kwargs):
-        try:
-            return super().post(request, *args, **kwargs)
-        except Exception:
-            logger.exception('Error inesperado durante ProductUpdateView.post() para product_id=%s', kwargs.get('pk'))
-            form = self.get_form()
-            form.add_error(None, 'Ocurrió un error inesperado al actualizar el producto. Revisa los datos e inténtalo nuevamente.')
-            return self.form_invalid(form)
+        self.object = self.get_object()
+        form = self.get_form()
+        variant_formset = self.get_variant_formset()
 
-    def form_valid(self, form):
+        if not form.is_valid() or not variant_formset.is_valid():
+            return self.form_invalid(form, variant_formset)
+
+        return self.form_valid(form, variant_formset)
+
+    def form_valid(self, form, variant_formset):
         form.instance.organization = self.get_org()
+
         try:
-            self.object = form.save()
+            with transaction.atomic():
+                self.object = form.save()
+
+                variants = variant_formset.save(commit=False)
+                for deleted_variant in variant_formset.deleted_objects:
+                    deleted_variant.is_active = False
+                    deleted_variant.save(update_fields=['is_active'])
+
+                for variant in variants:
+                    variant.product = self.object
+                    variant.size = (variant.size or 'UNICA').strip() or 'UNICA'
+                    variant.color = (variant.color or 'UNICO').strip() or 'UNICO'
+                    variant.gender = variant.gender or Variant.Gender.UNISEX
+                    variant.save()
+                    Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0, 'min_alert': 0})
+
+                variant_formset.save_m2m()
+
         except IntegrityError as exc:
-            if 'uq_org_sku' in str(exc):
+            error_msg = str(exc)
+            if 'uq_org_sku' in error_msg:
                 form.add_error('sku', 'SKU ya existe')
-                return self.form_invalid(form)
-            logger.exception('IntegrityError inesperado en ProductUpdateView.form_valid()')
-            form.add_error(None, 'No se pudo actualizar el producto por una restricción de datos.')
-            return self.form_invalid(form)
+            else:
+                form.add_error(None, 'No se pudo actualizar el producto por una restricción de datos.')
+            return self.form_invalid(form, variant_formset)
         except Exception:
             logger.exception('Error inesperado guardando ProductUpdateView.form_valid()')
             form.add_error(None, 'Ocurrió un error inesperado al guardar el producto.')
-            return self.form_invalid(form)
+            return self.form_invalid(form, variant_formset)
 
         self._safe_success_message('Producto actualizado.')
         return redirect(self.get_success_url())
+
+    def form_invalid(self, form, variant_formset=None):
+        return self.render_to_response(self.get_context_data(form=form, variant_formset=variant_formset or self.get_variant_formset()))
 
     def _safe_success_message(self, message):
         try:
