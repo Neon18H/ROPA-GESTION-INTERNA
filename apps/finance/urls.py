@@ -1,5 +1,9 @@
 from django.urls import path
-from .views import FinanceSummaryView
+
+from .views import FinanceDashboardView
 
 app_name = 'finance'
-urlpatterns = [path('', FinanceSummaryView.as_view(), name='summary')]
+urlpatterns = [
+    path('', FinanceDashboardView.as_view(), name='summary'),
+    path('dashboard/', FinanceDashboardView.as_view(), name='dashboard'),
+]

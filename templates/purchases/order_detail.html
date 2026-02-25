@@ -1,7 +1,12 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block content %}
 <div class="card p-3">
-  <div class="d-flex justify-content-between align-items-center"><h5>OC #{{ object.number }}</h5>{% if object.status == 'DRAFT' %}<a href="{% url 'purchases:receive' object.pk %}" class="btn btn-success btn-sm">Receive / Received</a>{% endif %}</div>
+  <div class="d-flex justify-content-between align-items-center">
+    <h5>OC #{{ object.number }}</h5>
+    {% if object.status == 'DRAFT' %}
+      <form method="post" action="{% url 'purchases:receive' object.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm" type="submit">Recibir mercancía</button></form>
+    {% endif %}
+  </div>
   <p class="small text-muted mb-2">Proveedor: {{ object.supplier.name }} · Estado: {{ object.get_status_display }}</p>
   <table class="table table-modern"><thead><tr><th>Variante</th><th>Cantidad</th><th>Costo</th><th>Total</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>{{ i.unit_cost }}</td><td>{{ i.line_total }}</td></tr>{% endfor %}</tbody></table>
 </div>
