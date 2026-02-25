@@ -12,11 +12,12 @@
       <div class="col-md-6">{{ form.category.label_tag }}{{ form.category }}{{ form.category.errors }}</div>
       <div class="col-md-6">{{ form.brand.label_tag }}{{ form.brand }}{{ form.brand.errors }}</div>
       <div class="col-12">{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}</div>
-      <div class="col-md-3">{{ form.initial_qty.label_tag }}{{ form.initial_qty }}{{ form.initial_qty.errors }}{% if form.initial_qty.help_text %}<div class="form-text">{{ form.initial_qty.help_text }}</div>{% endif %}</div>
-      <div class="col-md-3">{{ form.initial_cost.label_tag }}{{ form.initial_cost }}{{ form.initial_cost.errors }}{% if form.initial_cost.help_text %}<div class="form-text">{{ form.initial_cost.help_text }}</div>{% endif %}</div>
+      {% if form.initial_qty %}<div class="col-md-3">{{ form.initial_qty.label_tag }}{{ form.initial_qty }}{{ form.initial_qty.errors }}{% if form.initial_qty.help_text %}<div class="form-text">{{ form.initial_qty.help_text }}</div>{% endif %}</div>{% endif %}
+      {% if form.initial_cost %}<div class="col-md-3">{{ form.initial_cost.label_tag }}{{ form.initial_cost }}{{ form.initial_cost.errors }}{% if form.initial_cost.help_text %}<div class="form-text">{{ form.initial_cost.help_text }}</div>{% endif %}</div>{% endif %}
       <div class="col-md-3 d-flex align-items-end"><div class="form-check">{{ form.is_active }} {{ form.is_active.label_tag }}</div>{{ form.is_active.errors }}</div>
     </div>
 
+    {% if variant_formset %}
     <hr>
     <h6>Variantes (talla/color/género/código de barras)</h6>
     {{ variant_formset.management_form }}
@@ -32,6 +33,7 @@
       {% endfor %}
     </div>
     <p class="text-muted small mt-2 mb-0">Si no agregas variantes se creará una por defecto: UNICA/UNICO/UNISEX.</p>
+    {% endif %}
 
     <div class="d-flex gap-2 mt-3"><button class="btn btn-dark btn-sm">Guardar</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickCategory">Crear categoría</button><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#quickBrand">Crear marca</button></div>
   </form>
