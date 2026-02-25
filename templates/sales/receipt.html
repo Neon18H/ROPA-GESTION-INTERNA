@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block page_title %}Factura venta #{{ object.number }}{% endblock %}
 {% block content %}
 <div class="card shadow-sm">
@@ -25,6 +26,7 @@
         <p class="mb-0">Email: {{ object.customer.email|default:'N/A' }}</p>
       </div>
     </div>
+    {% if store_settings and store_settings.show_dual_currency %}<p class="text-muted small mb-3">TRM usada: 1 USD = {{ store_settings.fx_usd_cop_rate|default:0 }} COP</p>{% endif %}
 
     <div class="table-responsive">
       <table class="table table-striped align-middle">
@@ -43,10 +45,10 @@
             <tr>
               <td>{{ line.item.variant.product.name }} {{ line.item.variant.size }}/{{ line.item.variant.color }}</td>
               <td class="text-end">{{ line.item.qty }}</td>
-              <td class="text-end">${{ line.item.unit_price }}</td>
-              <td class="text-end">${{ line.line_subtotal|floatformat:2 }}</td>
-              <td class="text-end">IVA ({{ line.applied_tax_rate|floatformat:2 }}%): ${{ line.line_tax|floatformat:2 }}</td>
-              <td class="text-end">${{ line.line_total|floatformat:2 }}</td>
+              <td class="text-end">{{ line.item.unit_price|money }}</td>
+              <td class="text-end">{{ line.line_subtotal|money }}</td>
+              <td class="text-end">IVA ({{ line.applied_tax_rate|floatformat:2 }}%): {{ line.line_tax|money }}</td>
+              <td class="text-end">{{ line.line_total|money }}</td>
             </tr>
           {% empty %}
             <tr><td colspan="6" class="text-center text-muted">Sin ítems en la venta.</td></tr>
@@ -58,9 +60,9 @@
     <div class="row justify-content-end">
       <div class="col-md-5">
         <ul class="list-group">
-          <li class="list-group-item d-flex justify-content-between"><span>Subtotal</span><strong>${{ invoice.subtotal|floatformat:2 }}</strong></li>
-          <li class="list-group-item d-flex justify-content-between"><span>Impuestos</span><strong>${{ invoice.tax_total|floatformat:2 }}</strong></li>
-          <li class="list-group-item d-flex justify-content-between"><span>Total</span><strong>${{ invoice.total|floatformat:2 }}</strong></li>
+          <li class="list-group-item d-flex justify-content-between"><span>Subtotal</span><strong>{{ invoice.subtotal|money }}</strong></li>
+          <li class="list-group-item d-flex justify-content-between"><span>Impuestos</span><strong>{{ invoice.tax_total|money }}</strong></li>
+          <li class="list-group-item d-flex justify-content-between"><span>Total</span><strong>{{ invoice.total|money }}</strong></li>
         </ul>
       </div>
     </div>

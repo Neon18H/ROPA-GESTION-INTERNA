@@ -1,5 +1,6 @@
 <!doctype html>
 <html>
+{% load money %}
 <head>
   <meta charset="utf-8">
   <title>Factura #{{ sale.number }}</title>
@@ -23,17 +24,18 @@
         <tr>
           <td>{{ line.item.variant.product.name }} {{ line.item.variant.size }}/{{ line.item.variant.color }}</td>
           <td class="right">{{ line.item.qty }}</td>
-          <td class="right">{{ line.item.unit_price }}</td>
-          <td class="right">{{ line.line_subtotal|floatformat:2 }}</td>
-          <td class="right">{{ line.line_tax|floatformat:2 }} ({{ line.applied_tax_rate|floatformat:2 }}%)</td>
-          <td class="right">{{ line.line_total|floatformat:2 }}</td>
+          <td class="right">{{ line.item.unit_price|money }}</td>
+          <td class="right">{{ line.line_subtotal|money }}</td>
+          <td class="right">{{ line.line_tax|money }} ({{ line.applied_tax_rate|floatformat:2 }}%)</td>
+          <td class="right">{{ line.line_total|money }}</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% if store_settings and store_settings.show_dual_currency %}<p>TRM usada: 1 USD = {{ store_settings.fx_usd_cop_rate|default:0 }} COP</p>{% endif %}
 
-  <h3 class="right">Subtotal: {{ invoice.subtotal|floatformat:2 }}</h3>
-  <h3 class="right">Impuestos: {{ invoice.tax_total|floatformat:2 }}</h3>
-  <h3 class="right">Total: {{ invoice.total|floatformat:2 }}</h3>
+  <h3 class="right">Subtotal: {{ invoice.subtotal|money }}</h3>
+  <h3 class="right">Impuestos: {{ invoice.tax_total|money }}</h3>
+  <h3 class="right">Total: {{ invoice.total|money }}</h3>
 </body>
 </html>

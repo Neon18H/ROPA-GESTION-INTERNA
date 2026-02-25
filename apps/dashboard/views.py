@@ -108,7 +108,7 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
                 'sales_today_count': sales_today.count(),
                 'low_stock_count': Stock.objects.filter(variant__product__organization=org, quantity__lte=F('min_alert')).count(),
                 'inventory_value': inventory_value,
-                'estimated_margin': sales_month_total - inventory_value if sales_month_total > inventory_value else 0,
+                'estimated_margin': sales_month_total - inventory_value if sales_month_total > inventory_value else ZERO_DEC.value,
                 'top_customers': top_customers,
                 'sales_line_data': json.dumps({'labels': day_labels, 'totals': day_totals}),
                 'top_customers_chart_data': json.dumps({'labels': customer_labels, 'totals': customer_totals}),

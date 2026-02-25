@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block page_title %}Compra #{{ object.number }}{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between"><h3 class="card-title mb-0">Detalle OC #{{ object.number }}</h3>{% if object.status == 'DRAFT' %}<a class="btn btn-success btn-sm" href="{% url 'purchases:receive' object.pk %}">Marcar como recibida</a>{% endif %}</div>
   <div class="card-body">
     <p><strong>Proveedor:</strong> {{ object.supplier.name }} | <strong>Estado:</strong> {{ object.status }}</p>
-    <table class="table"><thead><tr><th>Producto</th><th>Cant</th><th>Costo</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>{{ i.unit_cost }}</td></tr>{% endfor %}</tbody></table>
+    <table class="table"><thead><tr><th>Producto</th><th>Cant</th><th>Costo</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>{{ i.unit_cost|money }}</td></tr>{% endfor %}</tbody></table>
   </div>
 </div>
 {% endblock %}

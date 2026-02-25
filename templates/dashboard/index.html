@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load money %}
 {% block title %}Dashboard · ERP Cloud{% endblock %}
 {% block page_title %}Dashboard Ejecutivo{% endblock %}
 {% block breadcrumbs %}
@@ -8,10 +9,10 @@
 {% endblock %}
 {% block content %}
 <div class="row g-3 mb-4">
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy (monto)</small><h3>{{ sales_today_total|default:0 }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes (monto)</small><h3>{{ sales_month_total|default:0 }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Inventario valorizado</small><h3>{{ inventory_value|default:0 }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Margen estimado</small><h3>{{ estimated_margin|default:0 }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy (monto)</small><h3>{{ sales_today_total|default:0|money }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes (monto)</small><h3>{{ sales_month_total|default:0|money }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Inventario valorizado</small><h3>{{ inventory_value|default:0|money }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Margen estimado</small><h3>{{ estimated_margin|default:0|money }}</h3></div></div></div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -39,7 +40,7 @@
             <thead><tr><th>Cliente</th><th>Pedidos</th><th>Total gastado</th></tr></thead>
             <tbody>
               {% for c in top_customers %}
-                <tr><td>{{ c.customer__name|default:'Sin cliente' }}</td><td>{{ c.orders }}</td><td>{{ c.total_spent }}</td></tr>
+                <tr><td>{{ c.customer__name|default:'Sin cliente' }}</td><td>{{ c.orders }}</td><td>{{ c.total_spent|money }}</td></tr>
               {% empty %}
                 <tr><td colspan="3" class="text-center py-4">No hay ventas todavía.</td></tr>
               {% endfor %}
