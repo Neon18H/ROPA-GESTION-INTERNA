@@ -17,6 +17,8 @@ class ProductCreateForm(forms.ModelForm):
         self.organization = organization
         self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
+        self.fields['category'].label_from_instance = lambda category: category.name
+        self.fields['brand'].label_from_instance = lambda brand: brand.name
 
         if self.instance and self.instance.pk:
             self.fields['initial_qty'].required = False
@@ -60,6 +62,8 @@ class ProductUpdateForm(forms.ModelForm):
         self.organization = organization
         self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
+        self.fields['category'].label_from_instance = lambda category: category.name
+        self.fields['brand'].label_from_instance = lambda brand: brand.name
 
     def clean_sku(self):
         sku = (self.cleaned_data.get('sku') or '').strip()
