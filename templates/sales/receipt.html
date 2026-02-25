@@ -1,12 +1,69 @@
 {% extends 'base.html' %}
-{% block page_title %}Recibo venta #{{ object.number }}{% endblock %}
+{% block page_title %}Factura venta #{{ object.number }}{% endblock %}
 {% block content %}
-<div class="card">
-  <div class="card-header d-flex justify-content-between"><h3 class="card-title mb-0">Recibo</h3><a href="{% url 'sales:print' object.pk %}" class="btn btn-outline-primary" target="_blank"><i class="fa fa-print me-1"></i>Imprimir</a></div>
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title mb-0">Factura #{{ object.number }}</h3>
+    <a href="{% url 'sales:print' object.pk %}" class="btn btn-outline-primary" target="_blank"><i class="fa fa-print me-1"></i>Imprimir</a>
+  </div>
   <div class="card-body">
-    <p><strong>Cliente:</strong> {{ object.customer.name|default:'Consumidor final' }}</p>
-    <table class="table"><thead><tr><th>Item</th><th>Cant</th><th>Total</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>${{ i.line_total }}</td></tr>{% endfor %}</tbody></table>
-    <h5 class="text-end">Total: ${{ object.total }}</h5>
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <h6 class="text-uppercase text-muted">Empresa</h6>
+        <p class="mb-1"><strong>{{ billing_settings.billing_legal_name|default:request.user.organization.name }}</strong></p>
+        <p class="mb-1">NIT: {{ billing_settings.billing_tax_id|default:request.user.organization.nit }}</p>
+        <p class="mb-1">{{ billing_settings.billing_address|default:request.user.organization.address }}</p>
+        <p class="mb-1">{{ billing_settings.billing_city }} {{ billing_settings.billing_postal_code }}</p>
+        <p class="mb-1">{{ billing_settings.billing_country }}</p>
+        <p class="mb-0">{{ billing_settings.billing_email }}</p>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <h6 class="text-uppercase text-muted">Cliente</h6>
+        <p class="mb-1"><strong>{{ object.customer.name|default:'Consumidor final' }}</strong></p>
+        <p class="mb-1">Documento: {{ object.customer.document_id|default:'N/A' }}</p>
+        <p class="mb-1">Teléfono: {{ object.customer.phone|default:'N/A' }}</p>
+        <p class="mb-0">Email: {{ object.customer.email|default:'N/A' }}</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="text-end">Cantidad</th>
+            <th class="text-end">Valor unitario</th>
+            <th class="text-end">Subtotal</th>
+            <th class="text-end">Impuesto</th>
+            <th class="text-end">Total línea</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in invoice.lines %}
+            <tr>
+              <td>{{ line.item.variant.product.name }} {{ line.item.variant.size }}/{{ line.item.variant.color }}</td>
+              <td class="text-end">{{ line.item.qty }}</td>
+              <td class="text-end">${{ line.item.unit_price }}</td>
+              <td class="text-end">${{ line.line_subtotal|floatformat:2 }}</td>
+              <td class="text-end">IVA ({{ line.applied_tax_rate|floatformat:2 }}%): ${{ line.line_tax|floatformat:2 }}</td>
+              <td class="text-end">${{ line.line_total|floatformat:2 }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="text-center text-muted">Sin ítems en la venta.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row justify-content-end">
+      <div class="col-md-5">
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between"><span>Subtotal</span><strong>${{ invoice.subtotal|floatformat:2 }}</strong></li>
+          <li class="list-group-item d-flex justify-content-between"><span>Impuestos</span><strong>${{ invoice.tax_total|floatformat:2 }}</strong></li>
+          <li class="list-group-item d-flex justify-content-between"><span>Total</span><strong>${{ invoice.total|floatformat:2 }}</strong></li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

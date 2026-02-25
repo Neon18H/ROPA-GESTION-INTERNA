@@ -32,7 +32,7 @@
         {{ form.payment_method.label_tag }}{{ form.payment_method }}
 
         {{ items_formset.management_form }}
-        <table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Desc</th><th></th></tr></thead><tbody></tbody></table>
+        <table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>IVA % (opcional)</th><th>Desc</th><th></th></tr></thead><tbody></tbody></table>
       </div>
       <div class="card-footer text-end"><button class="btn btn-success">Confirmar venta</button></div>
     </form>
@@ -70,6 +70,7 @@ document.querySelectorAll('.add-item').forEach(btn => {
     row.innerHTML = `<td>${this.dataset.name}<input type='hidden' data-field='variant' name='items-${idx}-variant' value='${this.dataset.id}'></td>
       <td><input class='form-control' data-field='quantity' type='number' name='items-${idx}-quantity' value='1' min='1'></td>
       <td><input class='form-control' data-field='unit_price' type='number' name='items-${idx}-unit_price' value='${this.dataset.price}' step='0.01'></td>
+      <td><input class='form-control' data-field='tax_rate' type='number' name='items-${idx}-tax_rate' value='' step='0.01' min='0' max='100'></td>
       <td><input class='form-control' data-field='discount' type='number' name='items-${idx}-discount' value='0' step='0.01'></td>
       <td><button type='button' class='btn btn-sm btn-outline-danger remove-item'>×</button></td>`;
     tableBody.appendChild(row);

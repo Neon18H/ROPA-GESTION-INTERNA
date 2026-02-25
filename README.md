@@ -73,3 +73,10 @@ Si responde `text/html` o `404`, el proceso web no está ejecutando `collectstat
 - `/promotions/`
 - `/returns/`
 - `/settings/`
+
+
+## Configuración de facturación (por organización)
+1. Inicia sesión con un usuario de la organización y entra a **Settings > Facturación** (`/settings/billing/`).
+2. Completa datos legales, correo y **IVA global (%)**; guarda los cambios.
+3. Al abrir una factura de venta (`/sales/<id>/receipt/`), el sistema mostrará esos datos y calculará impuestos por línea usando el IVA del ítem (si existe) o el IVA global configurado.
+

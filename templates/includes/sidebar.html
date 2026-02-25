@@ -22,5 +22,6 @@
     <a class="nav-link {% if request.path|slice:':9' == '/finance/' %}active{% endif %}" href="{% url 'finance:summary' %}"><i class="bi bi-cash-stack"></i><span>Finanzas</span></a>
     <a class="nav-link {% if request.path|slice:':9' == '/reports/' %}active{% endif %}" href="{% url 'reports:index' %}"><i class="bi bi-bar-chart-line"></i><span>Reportes</span></a>
     <a class="nav-link {% if request.path|slice:':10' == '/settings/' %}active{% endif %}" href="{% url 'settings_app:index' %}"><i class="bi bi-gear"></i><span>Configuración</span></a>
+    <a class="nav-link ps-4 {% if request.path|slice:':18' == '/settings/billing/' %}active{% endif %}" href="{% url 'settings_app:settings_billing' %}"><i class="bi bi-receipt"></i><span>Facturación</span></a>
   </nav>
 </div>

@@ -34,6 +34,7 @@ class SaleItemForm(forms.Form):
     variant = forms.ModelChoiceField(queryset=Variant.objects.none(), required=False)
     quantity = forms.IntegerField(min_value=1, required=False)
     unit_price = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False)
+    tax_rate = forms.DecimalField(min_value=0, max_value=100, decimal_places=2, max_digits=5, required=False)
     discount = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, initial=0)
 
     def __init__(self, *args, organization=None, **kwargs):
