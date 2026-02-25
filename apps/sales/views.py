@@ -93,7 +93,7 @@ def pos_view(request):
                         status=Sale.Status.PAID,
                     )
 
-                    org_settings = StoreSettings.objects.filter(organization=org).first()
+                    org_settings = StoreSettings.objects.using('settings_db').filter(organization_id=org.id).first()
                     default_vat_rate = org_settings.billing_vat_rate if org_settings else D('0.00')
 
                     class _ItemPayload:
@@ -163,7 +163,7 @@ class SaleReceiptView(RoleRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         sale = context['object']
         org = self.get_org()
-        billing_settings = StoreSettings.objects.filter(organization=org).first()
+        billing_settings = StoreSettings.objects.using('settings_db').filter(organization_id=org.id).first()
         default_vat_rate = billing_settings.billing_vat_rate if billing_settings else D('0.00')
         computed = compute_sale_totals(sale.items.all(), default_vat_rate)
         context['billing_settings'] = billing_settings
@@ -178,7 +178,7 @@ def sale_print_view(request, pk):
         Sale.objects.filter(organization=request.user.organization).select_related('customer').prefetch_related('items__variant__product'),
         pk=pk,
     )
-    billing_settings = StoreSettings.objects.filter(organization=request.user.organization).first()
+    billing_settings = StoreSettings.objects.using('settings_db').filter(organization_id=request.user.organization_id).first()
     default_vat_rate = billing_settings.billing_vat_rate if billing_settings else D('0.00')
     return render(
         request,

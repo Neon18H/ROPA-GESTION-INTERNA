@@ -12,6 +12,7 @@ from apps.settings_app.models import StoreSettings
 
 
 class BillingInvoiceTests(TestCase):
+    databases = {'default', 'settings_db'}
     def setUp(self):
         self.org = Organization.objects.create(name='Org Factura', nit='123')
         self.user = User.objects.create_user(
@@ -26,8 +27,8 @@ class BillingInvoiceTests(TestCase):
         self.sale = Sale.objects.create(organization=self.org, number=1, customer=self.customer, created_by=self.user)
 
     def test_receipt_renders_with_billing_settings(self):
-        StoreSettings.objects.create(
-            organization=self.org,
+        StoreSettings.objects.using('settings_db').create(
+            organization_id=self.org.id,
             billing_legal_name='Mi Empresa SAS',
             billing_tax_id='900123123-4',
             billing_vat_rate=Decimal('19.00'),

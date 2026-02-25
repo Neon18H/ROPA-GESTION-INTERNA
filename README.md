@@ -7,11 +7,17 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 - Roles: `ADMIN`, `GERENTE`, `VENDEDOR`, `BODEGA`.
 - Módulos: inventario, ventas, clientes, compras, finanzas, promociones, devoluciones, reportes, settings.
 - UI SaaS Enterprise responsive con Bootstrap 5.3.3, Bootstrap Icons e Inter.
-- PostgreSQL only (sin SQLite).
+- PostgreSQL para dominio principal + MySQL dedicada para `settings_app` (billing/SMTP/invoice prefs).
 - Deploy listo para Railway con arranque idempotente.
 
 ## Variables de entorno (Railway)
 - `DATABASE_URL`
+- `MYSQL_HOST`
+- `MYSQL_PORT`
+- `MYSQL_DB`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `EMAIL_SECRETS_MASTER_KEY` (base64 urlsafe de 32 bytes para AES-256-GCM)
 - `SECRET_KEY`
 - `DEBUG`
 - `ALLOWED_HOSTS=ropa-gestion-interna-production.up.railway.app`
@@ -23,23 +29,27 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 El proceso `web` usa `start.sh` y ejecuta siempre:
 
 1. `mkdir -p /app/staticfiles`
-2. `python manage.py migrate`
-3. `python manage.py collectstatic --noinput`
-4. `gunicorn gestion_ropa.wsgi:application --bind 0.0.0.0:$PORT --log-level info --access-logfile -`
+2. `python manage.py migrate --database=settings_db settings_app`
+3. `python manage.py migrate`
+4. `python manage.py collectstatic --noinput`
+5. `gunicorn gestion_ropa.wsgi:application --bind 0.0.0.0:$PORT --log-level info --access-logfile -`
 
 `Procfile`:
 
 ```procfile
-release: DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py migrate && DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py collectstatic --noinput
+release: DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py migrate --database=settings_db settings_app && DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py migrate && DJANGO_SETTINGS_MODULE=gestion_ropa.settings python manage.py collectstatic --noinput
 web: bash start.sh
 ```
 
 ## Comandos locales
 ```bash
+python manage.py makemigrations settings_app
+python manage.py migrate --database=settings_db settings_app
 python manage.py migrate
 python manage.py collectstatic --noinput
 python manage.py createsuperuser
 python manage.py seed_demo
+python manage.py verify_settings_multidb
 ```
 
 ## Verificación de estáticos en producción

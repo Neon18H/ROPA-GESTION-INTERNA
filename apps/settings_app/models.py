@@ -3,10 +3,11 @@ from decimal import Decimal
 from django.db import models
 
 from apps.accounts.models import Organization
+from apps.common.crypto import decrypt_secret, encrypt_secret
 
 
 class StoreSettings(models.Model):
-    organization = models.OneToOneField(Organization, on_delete=models.CASCADE)
+    organization_id = models.BigIntegerField(unique=True, db_index=True)
     currency = models.CharField(max_length=8, default='COP')
     tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=19)
     invoice_prefix = models.CharField(max_length=10, default='FAC')
@@ -28,3 +29,35 @@ class StoreSettings(models.Model):
 
     def __str__(self):
         return f'StoreSettings({self.organization_id})'
+
+    def get_org(self):
+        return Organization.objects.using('default').get(id=self.organization_id)
+
+
+class EmailSettings(models.Model):
+    organization_id = models.BigIntegerField(unique=True, db_index=True)
+    smtp_host = models.CharField(max_length=160, blank=True, default='')
+    smtp_port = models.PositiveIntegerField(default=587)
+    smtp_username = models.CharField(max_length=160, blank=True, default='')
+    smtp_password_ciphertext = models.TextField(blank=True, default='')
+    smtp_password_nonce = models.CharField(max_length=64, blank=True, default='')
+    smtp_password_kid = models.CharField(max_length=32, blank=True, default='')
+    smtp_use_tls = models.BooleanField(default=True)
+    smtp_from_email = models.EmailField(blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'EmailSettings({self.organization_id})'
+
+    def get_org(self):
+        return Organization.objects.using('default').get(id=self.organization_id)
+
+    @property
+    def smtp_password(self):
+        return decrypt_secret(self.smtp_password_ciphertext, self.smtp_password_nonce)
+
+    def set_smtp_password(self, plaintext):
+        encrypted = encrypt_secret(plaintext)
+        self.smtp_password_ciphertext = encrypted['ciphertext']
+        self.smtp_password_nonce = encrypted['nonce']
+        self.smtp_password_kid = encrypted['kid']

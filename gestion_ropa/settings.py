@@ -1,4 +1,5 @@
 from pathlib import Path
+import importlib.util
 import os
 import dj_database_url
 
@@ -54,7 +55,24 @@ TEMPLATES = [{
 }]
 
 WSGI_APPLICATION = 'gestion_ropa.wsgi.application'
-DATABASES = {'default': dj_database_url.config(default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ropa'))}
+SETTINGS_DB_ENGINE = 'django.db.backends.mysql'
+if not importlib.util.find_spec('MySQLdb') and os.getenv('MYSQL_FALLBACK_TO_SQLITE', 'True') == 'True':
+    SETTINGS_DB_ENGINE = 'django.db.backends.sqlite3'
+
+DATABASES = {
+    'default': dj_database_url.config(default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ropa')),
+    'settings_db': {
+        'ENGINE': SETTINGS_DB_ENGINE,
+        'NAME': os.getenv('MYSQL_DB', str(BASE_DIR / 'settings_db.sqlite3')),
+        'USER': os.getenv('MYSQL_USER', 'root'),
+        'PASSWORD': os.getenv('MYSQL_PASSWORD', ''),
+        'HOST': os.getenv('MYSQL_HOST', '127.0.0.1'),
+        'PORT': os.getenv('MYSQL_PORT', '3306'),
+        'OPTIONS': {} if SETTINGS_DB_ENGINE.endswith('sqlite3') else {'charset': 'utf8mb4'},
+    },
+}
+
+DATABASE_ROUTERS = ['apps.common.db_router.SettingsRouter']
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
