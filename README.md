@@ -12,11 +12,13 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 
 ## Variables de entorno (Railway)
 - `DATABASE_URL`
-- `MYSQL_HOST`
-- `MYSQL_PORT`
-- `MYSQL_DB`
-- `MYSQL_USER`
-- `MYSQL_PASSWORD`
+- `MYSQL_URL` (opcional, prioridad alta) `mysql://user:pass@host:port/db`
+- Variables separadas (fallback):
+  - `MYSQLHOST` o `MYSQL_HOST`
+  - `MYSQLPORT` o `MYSQL_PORT`
+  - `MYSQLDATABASE` o `MYSQL_DB`
+  - `MYSQLUSER` o `MYSQL_USER`
+  - `MYSQLPASSWORD` o `MYSQL_PASSWORD`
 - `EMAIL_SECRETS_MASTER_KEY` (base64 urlsafe de 32 bytes para AES-256-GCM)
 - `SECRET_KEY`
 - `DEBUG`
@@ -50,7 +52,17 @@ python manage.py collectstatic --noinput
 python manage.py createsuperuser
 python manage.py seed_demo
 python manage.py verify_settings_multidb
+python manage.py check_mysql_settings_db
 ```
+
+## Diagnóstico rápido de conexión MySQL (`settings_db`)
+Si Railway está inyectando credenciales, puedes validar conectividad en caliente:
+
+```bash
+python manage.py check_mysql_settings_db
+```
+
+El comando ejecuta `SELECT 1` en `settings_db` y responde `OK` o `ERROR`.
 
 ## Verificación de estáticos en producción
 Con la app desplegada, validar headers reales:
@@ -89,4 +101,3 @@ Si responde `text/html` o `404`, el proceso web no está ejecutando `collectstat
 1. Inicia sesión con un usuario de la organización y entra a **Settings > Facturación** (`/settings/billing/`).
 2. Completa datos legales, correo y **IVA global (%)**; guarda los cambios.
 3. Al abrir una factura de venta (`/sales/<id>/receipt/`), el sistema mostrará esos datos y calculará impuestos por línea usando el IVA del ítem (si existe) o el IVA global configurado.
-
