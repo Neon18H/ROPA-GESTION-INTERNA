@@ -1,1 +1,11 @@
-{% extends 'base.html' %}{% block content %}<h2>Reportes</h2><p>Exportación CSV/Excel disponible vía módulo reports.</p>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<div class="card p-3">
+  <h2>Reportes</h2>
+  <ul>
+    <li><a href="{% url 'reports:customers_xlsx' %}">Descargar Clientes (Excel)</a></li>
+    <li><a href="{% url 'reports:inventory_xlsx' %}">Descargar Inventario (Excel)</a></li>
+    <li><a href="{% url 'reports:finance_xlsx' %}">Descargar Finanzas (Excel)</a></li>
+  </ul>
+</div>
+{% endblock %}

@@ -9,6 +9,10 @@ class Supplier(OrganizationScopedModel):
     email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['organization', 'name'], name='uq_org_supplier_name')]
 
 
 class PurchaseOrder(OrganizationScopedModel):
@@ -24,6 +28,7 @@ class PurchaseOrder(OrganizationScopedModel):
     tax_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    notes = models.TextField(blank=True)
 
 
 class PurchaseItem(models.Model):
