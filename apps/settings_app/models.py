@@ -7,8 +7,20 @@ from apps.common.crypto import decrypt_secret, encrypt_secret
 
 
 class StoreSettings(models.Model):
+    class Currency(models.TextChoices):
+        COP = 'COP', 'COP'
+        USD = 'USD', 'USD'
+
+    class RoundingPolicy(models.TextChoices):
+        BANKERS = 'BANKERS', 'Bankers'
+        HALF_UP = 'HALF_UP', 'Half up'
+
     organization_id = models.BigIntegerField(unique=True, db_index=True)
     currency = models.CharField(max_length=8, default='COP')
+    base_currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.COP)
+    fx_usd_cop_rate = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0'))
+    show_dual_currency = models.BooleanField(default=True)
+    rounding_policy = models.CharField(max_length=16, choices=RoundingPolicy.choices, default=RoundingPolicy.HALF_UP)
     tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=19)
     invoice_prefix = models.CharField(max_length=10, default='FAC')
     next_invoice_number = models.IntegerField(default=1)

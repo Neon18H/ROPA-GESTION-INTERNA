@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 {% block content %}
 <div class="card p-3">
   <div class="d-flex justify-content-between align-items-center">
@@ -8,6 +9,6 @@
     {% endif %}
   </div>
   <p class="small text-muted mb-2">Proveedor: {{ object.supplier.name }} · Estado: {{ object.get_status_display }}</p>
-  <table class="table table-modern"><thead><tr><th>Variante</th><th>Cantidad</th><th>Costo</th><th>Total</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>{{ i.unit_cost }}</td><td>{{ i.line_total }}</td></tr>{% endfor %}</tbody></table>
+  <table class="table table-modern"><thead><tr><th>Variante</th><th>Cantidad</th><th>Costo</th><th>Total</th></tr></thead><tbody>{% for i in object.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>{{ i.unit_cost|money }}</td><td>{{ i.line_total|money }}</td></tr>{% endfor %}</tbody></table>
 </div>
 {% endblock %}

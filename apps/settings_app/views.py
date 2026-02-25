@@ -28,6 +28,10 @@ class SettingsBillingView(LoginRequiredMixin, OrganizationRequiredMixin, Templat
                 'invoice_prefix': 'FAC',
                 'next_invoice_number': 1,
                 'currency': 'COP',
+                'base_currency': 'COP',
+                'fx_usd_cop_rate': 0,
+                'show_dual_currency': True,
+                'rounding_policy': 'HALF_UP',
             },
         )
         email_settings, _ = EmailSettings.objects.using('settings_db').get_or_create(organization_id=org.id)

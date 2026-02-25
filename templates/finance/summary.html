@@ -1,1 +1,1 @@
-{% extends 'base.html' %}{% block content %}<h2>Finanzas</h2><p>Ingresos: {{ ingresos }} | Gastos: {{ gastos }}</p>{% endblock %}
+{% extends 'base.html' %}{% load money %}{% block content %}<h2>Finanzas</h2><p>Ingresos: {{ ingresos|money }} | Gastos: {{ gastos|money }}</p>{% endblock %}
