@@ -1,6 +1,39 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Recibo #{{ sale.number }}</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:6px}</style></head><body onload="window.print()">
-<h2>Recibo Venta #{{ sale.number }}</h2>
-<p>Cliente: {{ sale.customer.name|default:'Consumidor final' }}</p>
-<table><thead><tr><th>Producto</th><th>Cant</th><th>Total</th></tr></thead><tbody>{% for i in sale.items.all %}<tr><td>{{ i.variant.product.name }} {{ i.variant.size }}/{{ i.variant.color }}</td><td>{{ i.qty }}</td><td>{{ i.line_total }}</td></tr>{% endfor %}</tbody></table>
-<h3 style="text-align:right">Total: {{ sale.total }}</h3>
-</body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Factura #{{ sale.number }}</title>
+  <style>
+    body{font-family:Arial;padding:20px} table{width:100%;border-collapse:collapse;margin-top:12px}
+    td,th{border-bottom:1px solid #ddd;padding:6px;text-align:left} .right{text-align:right}
+  </style>
+</head>
+<body onload="window.print()">
+  <h2>Factura Venta #{{ sale.number }}</h2>
+  <p><strong>{{ billing_settings.billing_legal_name|default:request.user.organization.name }}</strong> - NIT {{ billing_settings.billing_tax_id|default:request.user.organization.nit }}</p>
+  <p>{{ billing_settings.billing_address|default:request.user.organization.address }} {{ billing_settings.billing_city }} {{ billing_settings.billing_postal_code }}</p>
+  <p>Cliente: {{ sale.customer.name|default:'Consumidor final' }} | Doc: {{ sale.customer.document_id|default:'N/A' }} | Tel: {{ sale.customer.phone|default:'N/A' }}</p>
+
+  <table>
+    <thead>
+      <tr><th>Producto</th><th class="right">Cant</th><th class="right">Unitario</th><th class="right">Subtotal</th><th class="right">Impuesto</th><th class="right">Total</th></tr>
+    </thead>
+    <tbody>
+      {% for line in invoice.lines %}
+        <tr>
+          <td>{{ line.item.variant.product.name }} {{ line.item.variant.size }}/{{ line.item.variant.color }}</td>
+          <td class="right">{{ line.item.qty }}</td>
+          <td class="right">{{ line.item.unit_price }}</td>
+          <td class="right">{{ line.line_subtotal|floatformat:2 }}</td>
+          <td class="right">{{ line.line_tax|floatformat:2 }} ({{ line.applied_tax_rate|floatformat:2 }}%)</td>
+          <td class="right">{{ line.line_total|floatformat:2 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3 class="right">Subtotal: {{ invoice.subtotal|floatformat:2 }}</h3>
+  <h3 class="right">Impuestos: {{ invoice.tax_total|floatformat:2 }}</h3>
+  <h3 class="right">Total: {{ invoice.total|floatformat:2 }}</h3>
+</body>
+</html>

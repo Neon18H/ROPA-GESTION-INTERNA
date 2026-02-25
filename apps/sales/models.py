@@ -1,7 +1,8 @@
 from django.db import models
+
 from apps.accounts.models import OrganizationScopedModel, User
 from apps.customers.models import Customer
-from apps.inventory.models import Variant, KardexEntry
+from apps.inventory.models import KardexEntry, Variant
 
 
 class Sale(OrganizationScopedModel):
@@ -30,6 +31,7 @@ class SaleItem(models.Model):
     variant = models.ForeignKey(Variant, on_delete=models.PROTECT)
     qty = models.IntegerField()
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     line_total = models.DecimalField(max_digits=12, decimal_places=2)
 
