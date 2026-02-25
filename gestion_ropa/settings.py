@@ -1,5 +1,6 @@
 from pathlib import Path
 import importlib.util
+import logging
 import os
 import dj_database_url
 
@@ -55,19 +56,61 @@ TEMPLATES = [{
 }]
 
 WSGI_APPLICATION = 'gestion_ropa.wsgi.application'
+
+
+def get_env(keys, default=None):
+    """Return the first non-empty env var found in keys."""
+    if isinstance(keys, str):
+        keys = [keys]
+    for key in keys:
+        value = os.getenv(key)
+        if value not in (None, ''):
+            return value
+    return default
+
+
+IS_LOCAL_ENV = DEBUG or get_env('DJANGO_ENV', '').lower() == 'local'
 SETTINGS_DB_ENGINE = 'django.db.backends.mysql'
 if not importlib.util.find_spec('MySQLdb') and os.getenv('MYSQL_FALLBACK_TO_SQLITE', 'True') == 'True':
     SETTINGS_DB_ENGINE = 'django.db.backends.sqlite3'
+
+mysql_url = get_env(['MYSQL_URL'])
+
+if mysql_url:
+    parsed_mysql_settings = dj_database_url.parse(mysql_url, engine=SETTINGS_DB_ENGINE)
+    settings_db_name = parsed_mysql_settings.get('NAME') or (str(BASE_DIR / 'settings_db.sqlite3') if SETTINGS_DB_ENGINE.endswith('sqlite3') else '')
+    settings_db_user = parsed_mysql_settings.get('USER', '')
+    settings_db_password = parsed_mysql_settings.get('PASSWORD', '')
+    settings_db_host = parsed_mysql_settings.get('HOST', '127.0.0.1' if IS_LOCAL_ENV else '')
+    settings_db_port = str(parsed_mysql_settings.get('PORT', '3306' if IS_LOCAL_ENV else ''))
+else:
+    settings_db_name = get_env(['MYSQLDATABASE', 'MYSQL_DB'], str(BASE_DIR / 'settings_db.sqlite3') if SETTINGS_DB_ENGINE.endswith('sqlite3') else '')
+    settings_db_user = get_env(['MYSQLUSER', 'MYSQL_USER'], 'root' if IS_LOCAL_ENV else '')
+    settings_db_password = get_env(['MYSQLPASSWORD', 'MYSQL_PASSWORD'], '')
+    settings_db_host = get_env(['MYSQLHOST', 'MYSQL_HOST'], '127.0.0.1' if IS_LOCAL_ENV else '')
+    settings_db_port = get_env(['MYSQLPORT', 'MYSQL_PORT'], '3306' if IS_LOCAL_ENV else '')
+
+if not settings_db_host and SETTINGS_DB_ENGINE.endswith('sqlite3'):
+    settings_db_host = '127.0.0.1'
+if not settings_db_port and SETTINGS_DB_ENGINE.endswith('sqlite3'):
+    settings_db_port = '3306'
+
+logging.getLogger(__name__).info(
+    'settings_db config resolved: HOST=%s PORT=%s NAME=%s USER=*** PASSWORD=***',
+    settings_db_host or '<empty>',
+    settings_db_port or '<empty>',
+    settings_db_name or '<empty>',
+)
 
 DATABASES = {
     'default': dj_database_url.config(default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ropa')),
     'settings_db': {
         'ENGINE': SETTINGS_DB_ENGINE,
-        'NAME': os.getenv('MYSQL_DB', str(BASE_DIR / 'settings_db.sqlite3')),
-        'USER': os.getenv('MYSQL_USER', 'root'),
-        'PASSWORD': os.getenv('MYSQL_PASSWORD', ''),
-        'HOST': os.getenv('MYSQL_HOST', '127.0.0.1'),
-        'PORT': os.getenv('MYSQL_PORT', '3306'),
+        'NAME': settings_db_name,
+        'USER': settings_db_user,
+        'PASSWORD': settings_db_password,
+        'HOST': settings_db_host,
+        'PORT': settings_db_port,
         'OPTIONS': {} if SETTINGS_DB_ENGINE.endswith('sqlite3') else {'charset': 'utf8mb4'},
     },
 }
