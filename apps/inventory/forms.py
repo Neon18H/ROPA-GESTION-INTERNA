@@ -1,12 +1,10 @@
 from django import forms
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from django.forms import formset_factory
 
 from .models import Brand, Category, KardexEntry, Product, Variant
 
 
-class ProductForm(forms.ModelForm):
+class ProductCreateForm(forms.ModelForm):
     initial_qty = forms.IntegerField(min_value=0, required=False, label='Stock inicial', initial=0)
     initial_cost = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Costo inicial', help_text='Opcional para registrar Kardex de entrada inicial.')
 
@@ -43,14 +41,6 @@ class ProductForm(forms.ModelForm):
         return sku
 
 
-    def save(self, commit=True):
-        try:
-            return super().save(commit=commit)
-        except IntegrityError as exc:
-            if 'uq_org_sku' in str(exc):
-                raise ValidationError({'sku': 'Ya existe un producto con este SKU en la organización actual.'}) from exc
-            raise
-
     def clean(self):
         cleaned_data = super().clean()
         initial_qty = cleaned_data.get('initial_qty') or 0
@@ -59,6 +49,36 @@ class ProductForm(forms.ModelForm):
         if initial_qty == 0:
             cleaned_data['initial_cost'] = initial_cost or 0
         return cleaned_data
+
+
+class ProductUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = ['sku', 'name', 'category', 'brand', 'description', 'is_active']
+
+    def __init__(self, *args, organization=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.organization = organization
+        self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
+        self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
+
+    def clean_sku(self):
+        sku = (self.cleaned_data.get('sku') or '').strip()
+        if not sku or not self.organization:
+            return sku
+
+        sku_exists = Product.objects.filter(organization=self.organization, sku=sku)
+        if self.instance and self.instance.pk:
+            sku_exists = sku_exists.exclude(pk=self.instance.pk)
+
+        if sku_exists.exists():
+            raise forms.ValidationError('Ya existe un producto con este SKU en la organización actual.')
+
+        return sku
+
+
+# Backward-compatible alias used by existing imports for creation flow.
+ProductForm = ProductCreateForm
 
 
 class VariantForm(forms.ModelForm):

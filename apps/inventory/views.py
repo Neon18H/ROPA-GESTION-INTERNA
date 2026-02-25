@@ -6,7 +6,7 @@ from io import TextIOWrapper
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.db.models import F, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,7 +15,15 @@ from django.views.generic import CreateView, FormView, ListView, UpdateView
 
 from apps.common.mixins import RoleRequiredMixin, organization_required, role_required
 from apps.common.models import OrganizationScopedMixin
-from .forms import BrandForm, CategoryForm, ProductForm, StockInForm, StockMovementForm, VariantInlineFormSet
+from .forms import (
+    BrandForm,
+    CategoryForm,
+    ProductCreateForm,
+    ProductUpdateForm,
+    StockInForm,
+    StockMovementForm,
+    VariantInlineFormSet,
+)
 from .models import Brand, Category, KardexEntry, Product, Stock, Variant
 from .services import create_kardex_movement
 
@@ -54,7 +62,7 @@ class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
 
 class ProductCreateView(RoleRequiredMixin, CreateView):
     model = Product
-    form_class = ProductForm
+    form_class = ProductCreateForm
     template_name = 'inventory/product_form.html'
     success_url = reverse_lazy('inventory:products')
     allowed_roles = ('ADMIN', 'BODEGA')
@@ -104,7 +112,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                     reference=f'product-create:{self.object.id}',
                 )
 
-        messages.success(self.request, 'Producto creado')
+        self._safe_success_message('Producto creado')
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
@@ -132,12 +140,17 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
             variant = Variant.objects.create(product=product, size='UNICA', color='UNICO', gender=Variant.Gender.UNISEX, is_active=True)
             Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
 
+    def _safe_success_message(self, message):
+        try:
+            messages.success(self.request, message)
+        except Exception:
+            logger.exception('No se pudo publicar mensaje de éxito en ProductCreateView.')
+
 
 class ProductUpdateView(RoleRequiredMixin, UpdateView):
     model = Product
-    form_class = ProductForm
+    form_class = ProductUpdateForm
     template_name = 'inventory/product_form.html'
-    success_url = reverse_lazy('inventory:products')
     allowed_roles = ('ADMIN', 'BODEGA')
 
     def dispatch(self, request, *args, **kwargs):
@@ -162,54 +175,50 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
         kwargs['organization'] = self.get_org()
         return kwargs
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        existing = self.object.variant_set.order_by('id')
-        initial = [{'size': v.size, 'color': v.color, 'gender': v.gender, 'barcode': v.barcode} for v in existing]
-        if not initial:
-            initial = [{'size': 'UNICA', 'color': 'UNICO', 'gender': Variant.Gender.UNISEX}]
-        ctx['variant_formset'] = VariantInlineFormSet(self.request.POST or None, prefix='variants', initial=initial)
-        ctx['existing_variants'] = existing
-        return ctx
+    def get_success_url(self):
+        try:
+            return reverse('inventory:products')
+        except Exception:
+            logger.exception('No se pudo resolver inventory:products; fallback a inventory:inventory.')
+            try:
+                return reverse('inventory:inventory')
+            except Exception:
+                logger.exception('No se pudo resolver inventory:inventory; fallback a /inventory/.')
+                return '/inventory/'
 
-    def form_valid(self, form):
-        variant_formset = VariantInlineFormSet(self.request.POST, prefix='variants')
-        if not variant_formset.is_valid():
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except Exception:
+            logger.exception('Error inesperado durante ProductUpdateView.post() para product_id=%s', kwargs.get('pk'))
+            form = self.get_form()
+            form.add_error(None, 'Ocurrió un error inesperado al actualizar el producto. Revisa los datos e inténtalo nuevamente.')
             return self.form_invalid(form)
 
-        with transaction.atomic():
-            obj = form.save(commit=False)
-            obj.organization = self.get_org()
-            form.instance = obj
-            try:
-                self.object = form.save()
-            except ValidationError as exc:
-                form.add_error(None, exc)
+    def form_valid(self, form):
+        form.instance.organization = self.get_org()
+        try:
+            self.object = form.save()
+        except IntegrityError as exc:
+            if 'uq_org_sku' in str(exc):
+                form.add_error('sku', 'SKU ya existe')
                 return self.form_invalid(form)
-            self.object.variant_set.all().delete()
-            created = 0
-            for entry in variant_formset.cleaned_data:
-                if not entry or entry.get('DELETE'):
-                    continue
-                if not entry.get('size') and not entry.get('color') and not entry.get('barcode'):
-                    continue
-                variant = Variant.objects.create(
-                    product=self.object,
-                    size=entry.get('size') or 'UNICA',
-                    color=entry.get('color') or 'UNICO',
-                    gender=entry.get('gender') or Variant.Gender.UNISEX,
-                    barcode=entry.get('barcode', ''),
-                    is_active=True,
-                )
-                Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
-                created += 1
+            logger.exception('IntegrityError inesperado en ProductUpdateView.form_valid()')
+            form.add_error(None, 'No se pudo actualizar el producto por una restricción de datos.')
+            return self.form_invalid(form)
+        except Exception:
+            logger.exception('Error inesperado guardando ProductUpdateView.form_valid()')
+            form.add_error(None, 'Ocurrió un error inesperado al guardar el producto.')
+            return self.form_invalid(form)
 
-            if created == 0:
-                variant = Variant.objects.create(product=self.object, size='UNICA', color='UNICO', gender=Variant.Gender.UNISEX, is_active=True)
-                Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
-
-        messages.success(self.request, 'Producto actualizado.')
+        self._safe_success_message('Producto actualizado.')
         return redirect(self.get_success_url())
+
+    def _safe_success_message(self, message):
+        try:
+            messages.success(self.request, message)
+        except Exception:
+            logger.exception('No se pudo publicar mensaje de éxito en ProductUpdateView.')
 
 
 class StockInView(RoleRequiredMixin, FormView):
