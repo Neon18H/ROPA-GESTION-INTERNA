@@ -72,6 +72,13 @@ def get_env(keys, default=None):
     return default
 
 
+def env_bool(key, default=False):
+    value = os.getenv(key)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
 IS_LOCAL_ENV = DEBUG or get_env('DJANGO_ENV', '').lower() == 'local'
 SETTINGS_DB_ENGINE = 'django.db.backends.mysql'
 if not importlib.util.find_spec('MySQLdb') and os.getenv('MYSQL_FALLBACK_TO_SQLITE', 'True') == 'True':
@@ -145,7 +152,8 @@ AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
 AWS_S3_SIGNATURE_VERSION = 's3v4'
 AWS_S3_ADDRESSING_STYLE = 'path'
 AWS_DEFAULT_ACL = None
-AWS_QUERYSTRING_AUTH = False
+MEDIA_PUBLIC_READ = env_bool('MEDIA_PUBLIC_READ', default=True)
+AWS_QUERYSTRING_AUTH = not MEDIA_PUBLIC_READ
 AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
 
 if AWS_S3_ENDPOINT_URL and AWS_STORAGE_BUCKET_NAME:
@@ -158,7 +166,13 @@ else:
     )
 
 STORAGES = {
-    'default': {'BACKEND': 'apps.common.storage_backends.PublicMediaStorage'},
+    'default': {
+        'BACKEND': (
+            'apps.common.storage.PublicMediaStorage'
+            if MEDIA_PUBLIC_READ
+            else 'apps.common.storage.PrivateMediaStorage'
+        )
+    },
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
 }
 

@@ -60,7 +60,7 @@ class ProductCreateForm(forms.ModelForm):
         for field_name in text_fields:
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
-        self.fields['image'].widget.attrs.update({'accept': '.jpg,.jpeg,.png,.webp,image/*', 'capture': 'environment'})
+        self.fields['image'].widget.attrs.update({'class': 'form-control', 'accept': 'image/*'})
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
 
 
@@ -79,7 +79,7 @@ class ProductUpdateForm(forms.ModelForm):
         text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image')
         for field_name in text_fields:
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
-        self.fields['image'].widget.attrs.update({'accept': '.jpg,.jpeg,.png,.webp,image/*', 'capture': 'environment'})
+        self.fields['image'].widget.attrs.update({'class': 'form-control', 'accept': 'image/*'})
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
 
     def clean_sku(self):

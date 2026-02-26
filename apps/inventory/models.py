@@ -4,7 +4,7 @@ from uuid import uuid4
 from django.db import models
 from django.db.models import F
 from apps.accounts.models import OrganizationScopedModel, User
-from apps.common.storage_backends import PublicMediaStorage
+from apps.common.storage import get_media_storage
 
 
 def product_image_upload_to(instance, filename):
@@ -34,7 +34,7 @@ class Product(OrganizationScopedModel):
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL)
     brand = models.ForeignKey(Brand, null=True, blank=True, on_delete=models.SET_NULL)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to=product_image_upload_to, storage=PublicMediaStorage(), null=True, blank=True)
+    image = models.ImageField(upload_to=product_image_upload_to, storage=get_media_storage, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
