@@ -27,6 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+
+
+  document.querySelectorAll('table[data-enhance="simple"]').forEach((table) => {
+    table.classList.add('table-striped');
+  });
+
   const topbarSearch = document.querySelector('.topbar-search input[type="search"]');
   if (topbarSearch) {
     topbarSearch.addEventListener('keydown', (event) => {
