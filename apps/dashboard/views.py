@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
@@ -114,4 +115,30 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
                 'top_customers_chart_data': json.dumps({'labels': customer_labels, 'totals': customer_totals}),
             }
         )
+        return ctx
+
+
+class RoadmapView(LoginRequiredMixin, TemplateView):
+    template_name = 'roadmap/index.html'
+    login_url = 'accounts:login'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['roadmap_items'] = [
+            {
+                'title': 'Testing del servicio de correos',
+                'status': 'En progreso',
+                'progress': 70,
+            },
+            {
+                'title': 'Implementación de roles en el sistema',
+                'status': 'En progreso',
+                'progress': 40,
+            },
+            {
+                'title': 'Mejoras en el dashboard principal',
+                'status': 'Planificado',
+                'progress': 15,
+            },
+        ]
         return ctx
