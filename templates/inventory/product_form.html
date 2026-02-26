@@ -20,13 +20,21 @@
       </div>
       <div class="col-12 col-md-6">
         <label class="form-label d-block">Vista previa</label>
-        {% if form.instance.image %}
-          <img src="{{ form.instance.image.url }}" alt="Imagen de producto" class="img-fluid rounded shadow-sm" style="max-height: 140px; object-fit: cover;">
-        {% else %}
-          <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="height: 140px;">
-            <span><i class="bi bi-image me-2"></i>Sin foto</span>
+        <div class="card shadow-sm">
+          <div class="card-body p-2">
+            {% if form.instance.image %}
+              <img id="product-image-preview" src="{{ form.instance.image.url }}" alt="Imagen de producto" class="img-fluid rounded w-100" style="max-height: 180px; object-fit: cover;">
+              <div id="product-image-empty" class="border rounded bg-light text-muted d-none align-items-center justify-content-center" style="height: 180px;">
+                <span><i class="bi bi-image me-2"></i>Sin foto</span>
+              </div>
+            {% else %}
+              <img id="product-image-preview" src="" alt="Imagen de producto" class="img-fluid rounded w-100 d-none" style="max-height: 180px; object-fit: cover;">
+              <div id="product-image-empty" class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="height: 180px;">
+                <span><i class="bi bi-image me-2"></i>Sin foto</span>
+              </div>
+            {% endif %}
           </div>
-        {% endif %}
+        </div>
       </div>
       {% if form.initial_qty %}<div class="col-md-3">{{ form.initial_qty.label_tag }}{{ form.initial_qty }}{{ form.initial_qty.errors }}{% if form.initial_qty.help_text %}<div class="form-text">{{ form.initial_qty.help_text }}</div>{% endif %}</div>{% endif %}
       {% if form.initial_cost %}<div class="col-md-3">{{ form.initial_cost.label_tag }}{{ form.initial_cost }}{{ form.initial_cost.errors }}{% if form.initial_cost.help_text %}<div class="form-text">{{ form.initial_cost.help_text }}</div>{% endif %}</div>{% endif %}
@@ -89,6 +97,21 @@
 {% block extra_js %}<script>
 $(function(){
   $('#id_initial_qty:disabled, #id_initial_cost:disabled').addClass('form-control-plaintext bg-light border rounded px-2 py-1 text-muted').attr('readonly', true);
+
+  const imageInput = $('#id_image');
+  const imagePreview = $('#product-image-preview');
+  const imageEmpty = $('#product-image-empty');
+
+  imageInput.on('change', function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    imagePreview.attr('src', objectUrl).removeClass('d-none');
+    imageEmpty.removeClass('d-flex').addClass('d-none');
+  });
 
   const tableBody = $('#variantTable tbody');
   const totalForms = $('#id_variants-TOTAL_FORMS');
