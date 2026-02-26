@@ -27,5 +27,10 @@
     {% if request.user.is_authenticated %}
       <a class="nav-link mt-2 {% if request.path|slice:':9' == '/roadmap/' %}active{% endif %}" href="{% url 'dashboard:roadmap' %}"><i class="bi bi-gear-fill"></i><span>Desarrollo</span></a>
     {% endif %}
+
+    <a class="nav-link mt-3 text-warning" href="mailto:support@ultrirest.cloud?subject=Incidente%20Sistema%20ROPA&body=Describe%20el%20incidente%3A%0A%0A%0APasos%20para%20reproducir%3A%0A1.%20%0A2.%20%0A%0AURL%3A%20{{ request.build_absolute_uri }}">
+      <i class="bi bi-life-preserver me-2"></i>
+      Soporte
+    </a>
   </nav>
 </div>

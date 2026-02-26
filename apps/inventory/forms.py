@@ -19,6 +19,7 @@ class ProductCreateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
+        self.fields['image'].widget = forms.FileInput()
         self._apply_bootstrap_styles()
 
         if self.instance and self.instance.pk:
@@ -76,6 +77,7 @@ class ProductUpdateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
+        self.fields['image'].widget = forms.FileInput()
         text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image')
         for field_name in text_fields:
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
