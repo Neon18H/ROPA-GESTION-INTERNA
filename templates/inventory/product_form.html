@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load media %}
 {% block content %}
 <div class="card p-3">
   <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Producto</h5><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:categories' %}">Categorías</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:brands' %}">Marcas</a></div></div>
@@ -23,7 +24,7 @@
         <div class="card shadow-sm">
           <div class="card-body p-2">
             {% if form.instance.image %}
-              <img id="product-image-preview" src="{{ form.instance.image.url }}" alt="Imagen de producto" class="img-fluid rounded w-100" style="max-height: 180px; object-fit: cover;">
+              <img id="product-image-preview" src="{% media_url form.instance.image %}" alt="Imagen de producto" class="img-fluid rounded w-100" style="max-height: 180px; object-fit: cover;">
               <div id="product-image-empty" class="border rounded bg-light text-muted d-none align-items-center justify-content-center" style="height: 180px;">
                 <span><i class="bi bi-image me-2"></i>Sin foto</span>
               </div>
@@ -95,50 +96,136 @@
 <div class="modal fade" id="quickBrand" tabindex="-1"><div class="modal-dialog"><div class="modal-content p-3"><input class="form-control" id="quickBrandName" placeholder="Marca"><button class="btn btn-dark btn-sm mt-2" id="saveQuickBrand">Guardar</button></div></div></div>
 {% endblock %}
 {% block extra_js %}<script>
-$(function(){
-  $('#id_initial_qty:disabled, #id_initial_cost:disabled').addClass('form-control-plaintext bg-light border rounded px-2 py-1 text-muted').attr('readonly', true);
+document.addEventListener('DOMContentLoaded', () => {
+  const csrfToken = '{{ csrf_token }}';
 
-  const imageInput = $('#id_image');
-  const imagePreview = $('#product-image-preview');
-  const imageEmpty = $('#product-image-empty');
+  const readonlyFields = document.querySelectorAll('#id_initial_qty:disabled, #id_initial_cost:disabled');
+  readonlyFields.forEach((field) => {
+    field.classList.add('form-control-plaintext', 'bg-light', 'border', 'rounded', 'px-2', 'py-1', 'text-muted');
+    field.setAttribute('readonly', 'readonly');
+  });
 
-  imageInput.on('change', function(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) {
+  const imageInput = document.getElementById('id_image');
+  const imagePreview = document.getElementById('product-image-preview');
+  const imageEmpty = document.getElementById('product-image-empty');
+
+  if (imageInput && imagePreview && imageEmpty) {
+    imageInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) {
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(file);
+      imagePreview.src = objectUrl;
+      imagePreview.classList.remove('d-none');
+      imageEmpty.classList.remove('d-flex');
+      imageEmpty.classList.add('d-none');
+    });
+  }
+
+  const tableBody = document.querySelector('#variantTable tbody');
+  const totalForms = document.getElementById('id_variants-TOTAL_FORMS');
+  const addVariantRowButton = document.getElementById('addVariantRow');
+
+  if (tableBody && totalForms && addVariantRowButton) {
+    addVariantRowButton.addEventListener('click', () => {
+      const formIdx = parseInt(totalForms.value, 10);
+      const firstRow = tableBody.querySelector('tr.variant-row');
+      if (!firstRow || Number.isNaN(formIdx)) {
+        return;
+      }
+
+      const newRow = firstRow.cloneNode(true);
+      newRow.querySelectorAll('input, select, textarea').forEach((input) => {
+        if (input.name) {
+          input.name = input.name.replace(/variants-(\d+)-/, `variants-${formIdx}-`);
+        }
+        if (input.id) {
+          input.id = input.id.replace(/variants-(\d+)-/, `variants-${formIdx}-`);
+        }
+
+        if (input.type === 'checkbox') {
+          input.checked = false;
+        } else {
+          input.value = '';
+        }
+      });
+
+      const genderInput = newRow.querySelector('input[name$="-gender"], select[name$="-gender"]');
+      if (genderInput) {
+        genderInput.value = 'UNISEX';
+      }
+
+      newRow.querySelectorAll('.errorlist').forEach((errorNode) => errorNode.remove());
+      tableBody.appendChild(newRow);
+      totalForms.value = String(formIdx + 1);
+    });
+  }
+
+  const postQuickCreate = async ({url, inputId, selectId, modalId}) => {
+    const input = document.getElementById(inputId);
+    const select = document.getElementById(selectId);
+    if (!input || !select) {
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    imagePreview.attr('src', objectUrl).removeClass('d-none');
-    imageEmpty.removeClass('d-flex').addClass('d-none');
-  });
+    const formData = new URLSearchParams();
+    formData.append('name', input.value.trim());
+    formData.append('csrfmiddlewaretoken', csrfToken);
 
-  const tableBody = $('#variantTable tbody');
-  const totalForms = $('#id_variants-TOTAL_FORMS');
-
-  $('#addVariantRow').on('click', function(){
-    const formIdx = parseInt(totalForms.val(), 10);
-    const firstRow = tableBody.find('tr.variant-row:first');
-    if (!firstRow.length) return;
-    const newRow = firstRow.clone();
-    newRow.find('input, select, textarea').each(function(){
-      const name = $(this).attr('name');
-      const id = $(this).attr('id');
-      if (name) $(this).attr('name', name.replace(/variants-(\d+)-/, `variants-${formIdx}-`));
-      if (id) $(this).attr('id', id.replace(/variants-(\d+)-/, `variants-${formIdx}-`));
-      if ($(this).is(':checkbox')) {
-        $(this).prop('checked', false);
-      } else {
-        $(this).val('');
-      }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: formData.toString(),
+      credentials: 'same-origin',
     });
-    newRow.find('input[name$="-gender"]').val('UNISEX');
-    newRow.find('.errorlist').remove();
-    tableBody.append(newRow);
-    totalForms.val(formIdx + 1);
-  });
-});
 
-$('#saveQuickCategory').on('click', function(){ $.post("{% url 'inventory:quick_category_create' %}", {name: $('#quickCategoryName').val(), csrfmiddlewaretoken:'{{ csrf_token }}'}).done(function(r){ $('#id_category').append(new Option(r.name, r.id, true, true)).trigger('change'); bootstrap.Modal.getInstance(document.getElementById('quickCategory')).hide();});});
-$('#saveQuickBrand').on('click', function(){ $.post("{% url 'inventory:quick_brand_create' %}", {name: $('#quickBrandName').val(), csrfmiddlewaretoken:'{{ csrf_token }}'}).done(function(r){ $('#id_brand').append(new Option(r.name, r.id, true, true)).trigger('change'); bootstrap.Modal.getInstance(document.getElementById('quickBrand')).hide();});});
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = await response.json();
+    if (!payload.id || !payload.name) {
+      return;
+    }
+
+    const option = new Option(payload.name, payload.id, true, true);
+    select.add(option);
+    select.dispatchEvent(new Event('change', {bubbles: true}));
+    input.value = '';
+
+    const modalElement = document.getElementById(modalId);
+    if (modalElement && typeof bootstrap !== 'undefined') {
+      bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+    }
+  };
+
+  const saveQuickCategoryButton = document.getElementById('saveQuickCategory');
+  if (saveQuickCategoryButton) {
+    saveQuickCategoryButton.addEventListener('click', () => {
+      postQuickCreate({
+        url: "{% url 'inventory:quick_category_create' %}",
+        inputId: 'quickCategoryName',
+        selectId: 'id_category',
+        modalId: 'quickCategory',
+      });
+    });
+  }
+
+  const saveQuickBrandButton = document.getElementById('saveQuickBrand');
+  if (saveQuickBrandButton) {
+    saveQuickBrandButton.addEventListener('click', () => {
+      postQuickCreate({
+        url: "{% url 'inventory:quick_brand_create' %}",
+        inputId: 'quickBrandName',
+        selectId: 'id_brand',
+        modalId: 'quickBrand',
+      });
+    });
+  }
+});
 </script>{% endblock %}
