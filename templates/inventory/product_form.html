@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-{% load media %}
 {% block content %}
 <div class="card p-3">
   <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Producto</h5><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:categories' %}">Categorías</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:brands' %}">Marcas</a></div></div>
@@ -14,26 +13,49 @@
       <div class="col-md-6">{{ form.brand.label_tag }}{{ form.brand }}{{ form.brand.errors }}</div>
       <div class="col-12">{{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}</div>
       <div class="col-12 col-md-6">
-        {{ form.image.label_tag }}
-        {{ form.image }}
-        {{ form.image.errors }}
-        <div class="form-text">Formatos permitidos: JPG, PNG, WEBP · máximo 5MB.</div>
+        {% if form.instance.image %}
+          <div class="mb-3">
+            <label class="form-label">Imagen actual</label>
+            <div>
+              <img
+                id="product-image-preview"
+                src="{{ form.instance.image.url }}"
+                alt="Imagen del producto"
+                class="rounded border shadow-sm"
+                style="width:90px;height:90px;object-fit:cover;"
+              >
+            </div>
+          </div>
+        {% else %}
+          <div class="mb-3">
+            <label class="form-label">Imagen actual</label>
+            <div>
+              <img
+                id="product-image-preview"
+                src=""
+                alt="Imagen del producto"
+                class="rounded border shadow-sm d-none"
+                style="width:90px;height:90px;object-fit:cover;"
+              >
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label" for="id_image">Cambiar imagen</label>
+          {{ form.image }}
+          {{ form.image.errors }}
+          <div class="form-text">PNG, JPG o WEBP · Máx 5MB</div>
+        </div>
       </div>
       <div class="col-12 col-md-6">
         <label class="form-label d-block">Vista previa</label>
         <div class="card shadow-sm">
           <div class="card-body p-2">
-            {% if form.instance.image %}
-              <img id="product-image-preview" src="{% media_url form.instance.image %}" alt="Imagen de producto" class="img-fluid rounded w-100" style="max-height: 180px; object-fit: cover;">
-              <div id="product-image-empty" class="border rounded bg-light text-muted d-none align-items-center justify-content-center" style="height: 180px;">
-                <span><i class="bi bi-image me-2"></i>Sin foto</span>
-              </div>
-            {% else %}
-              <img id="product-image-preview" src="" alt="Imagen de producto" class="img-fluid rounded w-100 d-none" style="max-height: 180px; object-fit: cover;">
-              <div id="product-image-empty" class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="height: 180px;">
-                <span><i class="bi bi-image me-2"></i>Sin foto</span>
-              </div>
-            {% endif %}
+            <img id="product-image-preview-large" src="{% if form.instance.image %}{{ form.instance.image.url }}{% endif %}" alt="Imagen de producto" class="img-fluid rounded w-100 {% if not form.instance.image %}d-none{% endif %}" style="max-height: 180px; object-fit: cover;">
+            <div id="product-image-empty" class="border rounded bg-light text-muted {% if form.instance.image %}d-none{% else %}d-flex{% endif %} align-items-center justify-content-center" style="height: 180px;">
+              <span><i class="bi bi-image me-2"></i>Sin foto</span>
+            </div>
           </div>
         </div>
       </div>
@@ -107,9 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const imageInput = document.getElementById('id_image');
   const imagePreview = document.getElementById('product-image-preview');
+  const imagePreviewLarge = document.getElementById('product-image-preview-large');
   const imageEmpty = document.getElementById('product-image-empty');
 
-  if (imageInput && imagePreview && imageEmpty) {
+  if (imageInput && imagePreview && imagePreviewLarge && imageEmpty) {
     imageInput.addEventListener('change', (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) {
@@ -118,7 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const objectUrl = URL.createObjectURL(file);
       imagePreview.src = objectUrl;
+      imagePreviewLarge.src = objectUrl;
       imagePreview.classList.remove('d-none');
+      imagePreviewLarge.classList.remove('d-none');
       imageEmpty.classList.remove('d-flex');
       imageEmpty.classList.add('d-none');
     });
