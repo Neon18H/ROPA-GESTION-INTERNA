@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.accounts.models import Organization, User
 from apps.customers.models import Customer
-from apps.inventory.models import Product, Variant
+from apps.inventory.models import Product, Stock, Variant
 from apps.sales.models import Sale, SaleItem
 from apps.sales.utils import compute_sale_totals
 from apps.settings_app.models import StoreSettings
@@ -13,6 +13,7 @@ from apps.settings_app.models import StoreSettings
 
 class BillingInvoiceTests(TestCase):
     databases = {'default', 'settings_db'}
+
     def setUp(self):
         self.org = Organization.objects.create(name='Org Factura', nit='123')
         self.user = User.objects.create_user(
@@ -67,3 +68,85 @@ class BillingInvoiceTests(TestCase):
         self.assertEqual(result['subtotal'], Decimal('250.00'))
         self.assertEqual(result['tax_total'], Decimal('40.50'))
         self.assertEqual(result['total'], Decimal('290.50'))
+
+
+class POSCustomerModesTests(TestCase):
+    databases = {'default', 'settings_db'}
+
+    def setUp(self):
+        self.org = Organization.objects.create(name='Org POS', nit='900')
+        self.other_org = Organization.objects.create(name='Org Other', nit='901')
+        self.user = User.objects.create_user(
+            username='pos-admin',
+            password='pass1234',
+            organization=self.org,
+            role=User.Role.ADMIN,
+        )
+        self.product = Product.objects.create(organization=self.org, sku='SKU-2', name='Pantalón')
+        self.variant = Variant.objects.create(product=self.product, size='L', color='Negro', price=Decimal('90.00'))
+        Stock.objects.create(variant=self.variant, quantity=15)
+        self.customer = Customer.objects.create(organization=self.org, name='Cliente Existente')
+
+    def _payload(self, **overrides):
+        data = {
+            'customer_mode': 'existing',
+            'customer': str(self.customer.pk),
+            'payment_method': 'CASH',
+            'items-TOTAL_FORMS': '1',
+            'items-INITIAL_FORMS': '0',
+            'items-MIN_NUM_FORMS': '0',
+            'items-MAX_NUM_FORMS': '1000',
+            'items-0-variant': str(self.variant.pk),
+            'items-0-quantity': '2',
+            'items-0-unit_price': '90.00',
+            'items-0-tax_rate': '0',
+            'items-0-discount': '0',
+        }
+        data.update(overrides)
+        return data
+
+    def test_pos_get_ok(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sales:pos'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_pos_post_existing_customer_creates_sale(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('sales:pos'), data=self._payload())
+
+        self.assertEqual(response.status_code, 302)
+        sale = Sale.objects.latest('id')
+        self.assertEqual(sale.customer_id, self.customer.id)
+        self.assertEqual(sale.organization_id, self.org.id)
+
+    def test_pos_post_new_customer_creates_customer_and_sale(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('sales:pos'),
+            data=self._payload(
+                customer_mode='new',
+                customer='',
+                new_customer_name='Cliente Nuevo',
+                new_customer_document='CC123',
+                new_customer_phone='3000000000',
+                new_customer_email='nuevo@example.com',
+                new_customer_address='Calle 123',
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        sale = Sale.objects.latest('id')
+        self.assertEqual(sale.organization_id, self.org.id)
+        self.assertEqual(sale.customer.organization_id, self.org.id)
+        self.assertEqual(sale.customer.name, 'Cliente Nuevo')
+        self.assertIn('Calle 123', sale.customer.notes)
+
+    def test_pos_post_new_customer_without_name_shows_error(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('sales:pos'),
+            data=self._payload(customer_mode='new', customer='', new_customer_name=''),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'El nombre del cliente es obligatorio.')

@@ -77,17 +77,24 @@ def pos_view(request):
                                 transaction.set_rollback(True)
                                 return redirect('sales:pos')
 
-                        customer = form.cleaned_data['customer']
-                        if not customer:
+                        customer_mode = form.cleaned_data['customer_mode']
+                        if customer_mode == SaleForm.CUSTOMER_MODE_NEW:
+                            address = (form.cleaned_data.get('new_customer_address') or '').strip()
+                            notes = f'Dirección: {address}' if address else ''
                             customer = Customer.objects.create(
                                 organization=org,
-                                name=form.cleaned_data['customer_name'],
-                                phone=form.cleaned_data['customer_phone'],
-                                email=form.cleaned_data['customer_email'],
-                                document_id=form.cleaned_data['customer_document_id'],
-                                type=form.cleaned_data.get('customer_type') or Customer.Type.NORMAL,
-                                notes=form.cleaned_data['customer_notes'],
+                                name=form.cleaned_data['new_customer_name'].strip(),
+                                phone=(form.cleaned_data.get('new_customer_phone') or '').strip(),
+                                email=(form.cleaned_data.get('new_customer_email') or '').strip(),
+                                document_id=(form.cleaned_data.get('new_customer_document') or '').strip(),
+                                type=Customer.Type.NORMAL,
+                                notes=notes,
                             )
+                        else:
+                            customer = form.cleaned_data['customer']
+                            if customer.organization_id != org.id:
+                                form.add_error('customer', 'Cliente inválido para esta organización.')
+                                raise IntegrityError('Cross-organization customer selected.')
 
                         next_number = (Sale.objects.filter(organization=org).aggregate(m=Max('number'))['m'] or 0) + 1
                         sale = Sale.objects.create(
@@ -143,10 +150,13 @@ def pos_view(request):
                         sale.save(update_fields=['subtotal', 'tax_total', 'discount_total', 'total'])
                         Payment.objects.create(sale=sale, method=sale.payment_method, amount=sale.total, reference='POS')
                 except IntegrityError:
-                    messages.error(request, 'No fue posible registrar la venta por conflicto de datos. Intenta de nuevo.')
-                    return redirect('sales:pos')
-                messages.success(request, f'Venta #{sale.number} registrada.')
-                return redirect('sales:receipt', pk=sale.pk)
+                    form.add_error(None, 'No fue posible registrar la venta por conflicto de datos. Revisa documento/email del cliente e intenta de nuevo.')
+                else:
+                    if form.cleaned_data['customer_mode'] == SaleForm.CUSTOMER_MODE_NEW:
+                        messages.success(request, f'Cliente creado y venta #{sale.number} registrada.')
+                    else:
+                        messages.success(request, f'Venta #{sale.number} registrada.')
+                    return redirect('sales:receipt', pk=sale.pk)
         else:
             form = SaleForm(organization=org)
             formset = SaleItemFormSet(prefix='items', form_kwargs={'organization': org})
