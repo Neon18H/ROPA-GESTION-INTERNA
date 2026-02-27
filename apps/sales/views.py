@@ -1,18 +1,19 @@
 import logging
 
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import F, Max, Q
+from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
 
 from apps.common.mixins import RoleRequiredMixin, role_required
 from apps.customers.models import Customer
-from apps.inventory.models import KardexEntry, ProductStock, Variant
+from apps.inventory.models import Variant
 from apps.settings_app.models import StoreSettings
 from .forms import SaleForm, SaleItemFormSet
 from .models import Payment, Sale, SaleItem
+from .services import apply_sale_stock_out
 from .utils import D, compute_sale_totals
 
 logger = logging.getLogger(__name__)
@@ -69,17 +70,6 @@ def pos_view(request):
             elif form.is_valid() and formset.is_valid():
                 try:
                     with transaction.atomic():
-                        for item in valid_items:
-                            stock = ProductStock.objects.select_for_update().filter(
-                                organization=org,
-                                product=item['variant'].product,
-                            ).first()
-                            current_stock = stock.qty if stock else 0
-                            if item['qty'] > current_stock:
-                                messages.error(request, f"Stock insuficiente para {item['variant'].product.name} {item['variant'].size}/{item['variant'].color}.")
-                                transaction.set_rollback(True)
-                                return redirect('sales:pos')
-
                         customer_mode = form.cleaned_data['customer_mode']
                         if customer_mode == SaleForm.CUSTOMER_MODE_NEW:
                             address = (form.cleaned_data.get('new_customer_address') or '').strip()
@@ -134,17 +124,8 @@ def pos_view(request):
                                 discount=item['discount'],
                                 line_total=line_total,
                             )
-                            ProductStock.objects.filter(organization=org, product=item['variant'].product).update(qty=F('qty') - item['qty'])
-                            KardexEntry.objects.create(
-                                organization=org,
-                                variant=item['variant'],
-                                type=KardexEntry.Type.OUT,
-                                qty=item['qty'],
-                                unit_cost=0,
-                                note='Venta',
-                                reference=f'sale:{sale.id}',
-                                created_by=request.user,
-                            )
+
+                        apply_sale_stock_out(sale=sale, user=request.user, org=org)
 
                         sale.subtotal = computed['subtotal']
                         sale.tax_total = computed['tax_total']
@@ -152,6 +133,8 @@ def pos_view(request):
                         sale.total = computed['total'] - discount_total
                         sale.save(update_fields=['subtotal', 'tax_total', 'discount_total', 'total'])
                         Payment.objects.create(sale=sale, method=sale.payment_method, amount=sale.total, reference='POS')
+                except ValidationError as exc:
+                    form.add_error(None, exc.message)
                 except IntegrityError:
                     form.add_error(None, 'No fue posible registrar la venta por conflicto de datos. Revisa documento/email del cliente e intenta de nuevo.')
                 else:
