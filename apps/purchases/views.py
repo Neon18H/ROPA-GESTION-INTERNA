@@ -92,6 +92,7 @@ def purchase_create_view(request):
             prefix='items',
         )
 
+    manual_variant_form = ManualVariantForm(request=request, organization=org)
     settings_obj = StoreSettings.objects.filter(organization_id=org.id).first()
     return render(
         request,
@@ -104,6 +105,7 @@ def purchase_create_view(request):
             'sizes': (settings_obj.sizes if settings_obj else []),
             'colors': (settings_obj.colors if settings_obj else []),
             'gender_choices': Variant.Gender.choices,
+            'manual_variant_form': manual_variant_form,
         },
     )
 
@@ -112,7 +114,7 @@ def purchase_create_view(request):
 @role_required('ADMIN', 'BODEGA')
 def purchase_create_manual_variant_ajax(request):
     org = request.user.organization
-    form = ManualVariantForm(request.POST, organization=org)
+    form = ManualVariantForm(request.POST, request=request, organization=org)
     if not form.is_valid():
         return JsonResponse({'errors': form.errors}, status=400)
 

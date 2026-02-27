@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from apps.accounts.models import Organization, User
 from apps.inventory.models import Product, Stock, Variant
+from apps.purchases.forms import ManualVariantForm
 from apps.purchases.models import PurchaseOrder, Supplier
 
 
@@ -58,6 +59,20 @@ class PurchaseFlowTests(TestCase):
         self.assertEqual(stock.quantity, 7)
         self.assertEqual(order.status, PurchaseOrder.Status.RECEIVED)
         self.assertEqual(stock.last_cost, Decimal('20.00'))
+
+
+    def test_manual_variant_form_filters_active_suppliers_by_request_org(self):
+        active_supplier = Supplier.objects.create(organization=self.org, name='Activo', is_active=True)
+        Supplier.objects.create(organization=self.org, name='Inactivo', is_active=False)
+        Supplier.objects.create(organization=self.other_org, name='Otro Org', is_active=True)
+
+        class Req:
+            user = self.user
+
+        form = ManualVariantForm(request=Req())
+        supplier_ids = list(form.fields['supplier'].queryset.values_list('id', flat=True))
+
+        self.assertEqual(supplier_ids, [active_supplier.id])
 
     def test_purchase_manual_variant_creates_product_variant_in_org_only(self):
         supplier = Supplier.objects.create(organization=self.org, name='Prov', is_active=True)
