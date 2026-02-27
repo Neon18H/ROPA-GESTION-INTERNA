@@ -33,14 +33,57 @@
         <form method="post" id="posForm">
           {% csrf_token %}
           {{ items_formset.management_form }}
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Cliente existente</label>{{ form.customer }}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="border rounded p-3 mb-3">
+            <h6 class="mb-3">Cliente</h6>
+            <div class="mb-3">
+              {{ form.customer_mode }}
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Método de pago</label>{{ form.payment_method }}
+
+            <div id="existingCustomerFields" class="row g-2">
+              <div class="col-12">
+                <label class="form-label" for="{{ form.customer.id_for_label }}">Cliente existente</label>
+                {{ form.customer }}
+                {% if form.customer.errors %}<div class="invalid-feedback d-block">{{ form.customer.errors|join:', ' }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div id="newCustomerFields" class="row g-2 d-none">
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.new_customer_name.id_for_label }}">Nombre completo *</label>
+                {{ form.new_customer_name }}
+                {% if form.new_customer_name.errors %}<div class="invalid-feedback d-block">{{ form.new_customer_name.errors|join:', ' }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.new_customer_document.id_for_label }}">Documento</label>
+                {{ form.new_customer_document }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.new_customer_phone.id_for_label }}">Teléfono</label>
+                {{ form.new_customer_phone }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ form.new_customer_email.id_for_label }}">Email</label>
+                {{ form.new_customer_email }}
+                {% if form.new_customer_email.errors %}<div class="invalid-feedback d-block">{{ form.new_customer_email.errors|join:', ' }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="{{ form.new_customer_address.id_for_label }}">Dirección</label>
+                {{ form.new_customer_address }}
+              </div>
             </div>
           </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.payment_method.id_for_label }}">Método de pago</label>{{ form.payment_method }}
+            </div>
+          </div>
+
           <div class="table-responsive mb-3">
             <table class="table table-hover align-middle" id="itemsTable">
               <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>IVA %</th><th>Desc.</th><th></th></tr></thead>
@@ -56,4 +99,26 @@
   </div>
 </div>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'js/pos.js' %}"></script>{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/pos.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const existingFields = document.getElementById('existingCustomerFields');
+    const newFields = document.getElementById('newCustomerFields');
+    const modeInputs = document.querySelectorAll('input[name="customer_mode"]');
+
+    const toggleCustomerMode = function () {
+      const selected = document.querySelector('input[name="customer_mode"]:checked');
+      const isNew = selected && selected.value === 'new';
+      existingFields.classList.toggle('d-none', isNew);
+      newFields.classList.toggle('d-none', !isNew);
+    };
+
+    modeInputs.forEach(function (input) {
+      input.addEventListener('change', toggleCustomerMode);
+    });
+
+    toggleCustomerMode();
+  });
+</script>
+{% endblock %}
