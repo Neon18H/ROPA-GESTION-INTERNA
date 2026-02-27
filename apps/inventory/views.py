@@ -77,11 +77,11 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         if 'variant_formset' not in ctx:
             initial = [{'size': 'UNICA', 'color': 'UNICO', 'gender': Variant.Gender.UNISEX}]
-            ctx['variant_formset'] = VariantInlineFormSet(self.request.POST or None, prefix='variants', initial=initial)
+            ctx['variant_formset'] = VariantInlineFormSet(self.request.POST or None, self.request.FILES or None, prefix='variants', initial=initial)
         return ctx
 
     def form_valid(self, form):
-        variant_formset = VariantInlineFormSet(self.request.POST, prefix='variants')
+        variant_formset = VariantInlineFormSet(self.request.POST, self.request.FILES, prefix='variants')
         if not variant_formset.is_valid():
             return self.form_invalid(form)
 
@@ -117,7 +117,9 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
-        return self.render_to_response(self.get_context_data(form=form, variant_formset=VariantInlineFormSet(self.request.POST, prefix='variants')))
+        return self.render_to_response(
+            self.get_context_data(form=form, variant_formset=VariantInlineFormSet(self.request.POST, self.request.FILES, prefix='variants'))
+        )
 
     def _save_variants(self, product, variant_formset):
         created = 0
@@ -132,6 +134,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 color=entry.get('color') or 'UNICO',
                 gender=entry.get('gender') or Variant.Gender.UNISEX,
                 barcode=entry.get('barcode', ''),
+                image=entry.get('image'),
                 is_active=True,
             )
             Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
@@ -169,6 +172,7 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
         kwargs = {'instance': self.object, 'prefix': 'variants'}
         if self.request.method in ('POST', 'PUT'):
             kwargs['data'] = self.request.POST
+            kwargs['files'] = self.request.FILES
         return VariantUpdateFormSet(**kwargs)
 
     def get_context_data(self, **kwargs):

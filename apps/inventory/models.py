@@ -14,6 +14,14 @@ def product_image_upload_to(instance, filename):
     return f'org_{instance.organization_id}/products/{product_id}/{safe_filename}'
 
 
+def variant_image_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower() or '.jpg'
+    safe_filename = f'{uuid4().hex}{extension}'
+    variant_id = instance.id or 'new'
+    organization_id = getattr(getattr(instance, 'product', None), 'organization_id', None) or 'unknown'
+    return f'org_{organization_id}/variants/{variant_id}/{safe_filename}'
+
+
 class Category(OrganizationScopedModel):
     name = models.CharField(max_length=120)
 
@@ -61,6 +69,7 @@ class Variant(models.Model):
     color = models.CharField(max_length=32)
     gender = models.CharField(max_length=12, choices=Gender.choices, default=Gender.UNISEX)
     barcode = models.CharField(max_length=64, blank=True)
+    image = models.ImageField(upload_to=variant_image_upload_to, storage=get_media_storage, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)

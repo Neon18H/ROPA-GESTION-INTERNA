@@ -114,7 +114,7 @@ def purchase_create_view(request):
 @role_required('ADMIN', 'BODEGA')
 def purchase_create_manual_variant_ajax(request):
     org = request.user.organization
-    form = ManualVariantForm(request.POST, request=request, organization=org)
+    form = ManualVariantForm(request.POST, request.FILES, request=request, organization=org)
     if not form.is_valid():
         return JsonResponse({'errors': form.errors}, status=400)
 
@@ -146,8 +146,11 @@ def purchase_create_manual_variant_ajax(request):
                 color=form.cleaned_data.get('color') or '',
                 gender=form.cleaned_data.get('gender') or Variant.Gender.UNISEX,
                 barcode=form.cleaned_data.get('barcode') or '',
-                defaults={'is_active': True},
+                defaults={'is_active': True, 'image': form.cleaned_data.get('image')},
             )
+            if form.cleaned_data.get('image'):
+                variant.image = form.cleaned_data['image']
+                variant.save(update_fields=['image'])
 
             SupplierVariant.objects.update_or_create(
                 organization=org,

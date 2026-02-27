@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<form method="post" class="card p-3" action="{% url 'purchases:create' %}">
+<form method="post" class="card p-3" action="{% url 'purchases:create' %}" enctype="multipart/form-data">
   {% csrf_token %}
   <div class="d-flex justify-content-between mb-2">
     <h5 class="mb-0">Nueva orden de compra</h5>
@@ -55,6 +55,15 @@
           <div class="col-md-3"><label class="form-label">Color</label><input class="form-control" list="colors-list" id="manualColor"></div>
           <div class="col-md-3"><label class="form-label">Género</label><select class="form-select" id="manualGender"><option value="">---------</option>{% for value,label in gender_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
           <div class="col-md-3"><label class="form-label">Barcode</label><input class="form-control" id="manualBarcode"></div>
+          <div class="col-md-6">
+            <label class="form-label" for="id_manual_image">Imagen variante</label>
+            <input type="file" class="form-control" id="id_manual_image" accept="image/*" capture="environment" data-image-preview-target="#manual-variant-preview" data-image-empty-target="#manual-variant-empty">
+            <div class="form-text">Desde el celular puedes tomar una foto o subir desde galería.</div>
+          </div>
+          <div class="col-md-6">
+            <div class="border rounded bg-light d-flex align-items-center justify-content-center" id="manual-variant-empty" style="height:140px;">Sin foto</div>
+            <img id="manual-variant-preview" src="" alt="Vista previa" class="img-thumbnail w-100 d-none" style="max-height:140px; object-fit:cover;">
+          </div>
           <div class="col-md-3"><label class="form-label">Costo unitario</label><input type="number" min="0" step="0.01" class="form-control" id="manualUnitCost"></div>
           <div class="col-md-3"><label class="form-label">Cantidad</label><input type="number" min="1" class="form-control" id="manualQty" value="1"></div>
         </div>
@@ -122,22 +131,27 @@
     const error = document.getElementById('manualVariantError');
     error.textContent = '';
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    const data = new URLSearchParams({
-      supplier: manualSupplierSelect.value,
-      sku: document.getElementById('manualSku').value,
-      product_name: document.getElementById('manualProductName').value,
-      category: document.getElementById('manualCategory').value,
-      brand: document.getElementById('manualBrand').value,
-      size: document.getElementById('manualSize').value,
-      color: document.getElementById('manualColor').value,
-      gender: document.getElementById('manualGender').value,
-      barcode: document.getElementById('manualBarcode').value,
-      unit_cost: document.getElementById('manualUnitCost').value,
-      qty: document.getElementById('manualQty').value,
-    });
+    const data = new FormData();
+    data.append('supplier', manualSupplierSelect.value);
+    data.append('sku', document.getElementById('manualSku').value);
+    data.append('product_name', document.getElementById('manualProductName').value);
+    data.append('category', document.getElementById('manualCategory').value);
+    data.append('brand', document.getElementById('manualBrand').value);
+    data.append('size', document.getElementById('manualSize').value);
+    data.append('color', document.getElementById('manualColor').value);
+    data.append('gender', document.getElementById('manualGender').value);
+    data.append('barcode', document.getElementById('manualBarcode').value);
+    data.append('unit_cost', document.getElementById('manualUnitCost').value);
+    data.append('qty', document.getElementById('manualQty').value);
+
+    const imageInput = document.getElementById('id_manual_image');
+    if (imageInput && imageInput.files && imageInput.files[0]) {
+      data.append('image', imageInput.files[0]);
+    }
+
     fetch("{% url 'purchases:ajax_create_variant' %}", {
       method: 'POST',
-      headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+      headers: {'X-CSRFToken': csrfToken},
       body: data,
     }).then(async (response) => {
       const payload = await response.json();
