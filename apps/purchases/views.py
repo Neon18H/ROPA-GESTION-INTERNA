@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.db import IntegrityError, transaction
 from django.db.models import Max
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_POST
@@ -10,8 +11,10 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from apps.audit.models import ActionLog
 from apps.common.mixins import RoleRequiredMixin, role_required
-from .forms import PurchaseItemFormSet, PurchaseOrderForm, SupplierForm
-from .models import PurchaseItem, PurchaseOrder, Supplier
+from apps.inventory.models import Brand, Category, Product, Variant
+from apps.settings_app.models import StoreSettings
+from .forms import ManualVariantForm, PurchaseItemFormSet, PurchaseOrderForm, SupplierForm
+from .models import PurchaseItem, PurchaseOrder, Supplier, SupplierVariant
 from .services import receive_purchase
 
 
@@ -27,9 +30,17 @@ class PurchaseListView(RoleRequiredMixin, ListView):
 @role_required('ADMIN', 'BODEGA')
 def purchase_create_view(request):
     org = request.user.organization
+    supplier_id = request.POST.get('supplier') if request.method == 'POST' else None
+    show_all = request.POST.get('show_all_variants') == 'on'
     if request.method == 'POST':
         form = PurchaseOrderForm(request.POST, organization=org)
-        formset = PurchaseItemFormSet(request.POST, form_kwargs={'organization': org}, prefix='items')
+        supplier_id = form.data.get('supplier')
+        show_all = form.data.get('show_all_variants') == 'on'
+        formset = PurchaseItemFormSet(
+            request.POST,
+            form_kwargs={'organization': org, 'supplier_id': supplier_id, 'show_all': show_all},
+            prefix='items',
+        )
         if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
@@ -58,19 +69,106 @@ def purchase_create_view(request):
                             line_total=line_total,
                         )
 
+                        SupplierVariant.objects.update_or_create(
+                            organization=org,
+                            supplier=purchase.supplier,
+                            variant=variant,
+                            defaults={'last_purchase_cost': unit_cost, 'is_active': True},
+                        )
+
                     purchase.subtotal = subtotal
                     purchase.total = subtotal
                     purchase.save(update_fields=['subtotal', 'total'])
+                    receive_purchase(purchase, request.user)
             except IntegrityError:
                 form.add_error(None, 'No se pudo guardar la orden. Verifique los datos e intente de nuevo.')
             else:
-                messages.success(request, 'Orden de compra creada.')
+                messages.success(request, 'Orden de compra creada y recibida. Inventario actualizado.')
                 return redirect('purchases:detail', pk=purchase.pk)
     else:
         form = PurchaseOrderForm(organization=org)
-        formset = PurchaseItemFormSet(form_kwargs={'organization': org}, prefix='items')
+        formset = PurchaseItemFormSet(
+            form_kwargs={'organization': org, 'supplier_id': supplier_id, 'show_all': show_all},
+            prefix='items',
+        )
 
-    return render(request, 'purchases/order_form.html', {'form': form, 'formset': formset})
+    settings_obj = StoreSettings.objects.filter(organization_id=org.id).first()
+    return render(
+        request,
+        'purchases/order_form.html',
+        {
+            'form': form,
+            'formset': formset,
+            'categories': Category.objects.filter(organization=org).order_by('name'),
+            'brands': Brand.objects.filter(organization=org).order_by('name'),
+            'sizes': (settings_obj.sizes if settings_obj else []),
+            'colors': (settings_obj.colors if settings_obj else []),
+            'gender_choices': Variant.Gender.choices,
+        },
+    )
+
+
+@require_POST
+@role_required('ADMIN', 'BODEGA')
+def purchase_create_manual_variant_ajax(request):
+    org = request.user.organization
+    form = ManualVariantForm(request.POST, organization=org)
+    if not form.is_valid():
+        return JsonResponse({'errors': form.errors}, status=400)
+
+    supplier = form.cleaned_data['supplier']
+    if supplier.organization_id != org.id:
+        return JsonResponse({'error': 'Proveedor inválido para esta organización.'}, status=400)
+
+    try:
+        with transaction.atomic():
+            product, _ = Product.objects.get_or_create(
+                organization=org,
+                sku=form.cleaned_data['sku'],
+                defaults={
+                    'name': form.cleaned_data['product_name'],
+                    'category': form.cleaned_data['category'],
+                    'brand': form.cleaned_data['brand'],
+                },
+            )
+            product.name = form.cleaned_data['product_name']
+            if form.cleaned_data.get('category'):
+                product.category = form.cleaned_data['category']
+            if form.cleaned_data.get('brand'):
+                product.brand = form.cleaned_data['brand']
+            product.save(update_fields=['name', 'category', 'brand'])
+
+            variant, _ = Variant.objects.get_or_create(
+                product=product,
+                size=form.cleaned_data.get('size') or '',
+                color=form.cleaned_data.get('color') or '',
+                gender=form.cleaned_data.get('gender') or Variant.Gender.UNISEX,
+                barcode=form.cleaned_data.get('barcode') or '',
+                defaults={'is_active': True},
+            )
+
+            SupplierVariant.objects.update_or_create(
+                organization=org,
+                supplier=supplier,
+                variant=variant,
+                defaults={
+                    'supplier_sku': form.cleaned_data['sku'],
+                    'last_purchase_cost': form.cleaned_data['unit_cost'],
+                    'is_active': True,
+                },
+            )
+    except IntegrityError:
+        return JsonResponse({'error': 'No se pudo crear la variante manual. Verifica SKU y datos únicos.'}, status=400)
+
+    return JsonResponse(
+        {
+            'variant_id': variant.id,
+            'variant_label': str(variant),
+            'product_id': product.id,
+            'qty': form.cleaned_data['qty'],
+            'unit_cost': str(form.cleaned_data['unit_cost']),
+        }
+    )
 
 
 class PurchaseDetailView(RoleRequiredMixin, DetailView):

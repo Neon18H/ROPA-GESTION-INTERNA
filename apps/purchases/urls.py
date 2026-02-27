@@ -9,6 +9,7 @@ from .views import (
     SupplierUpdateView,
     purchase_create_view,
     purchase_receive_view,
+    purchase_create_manual_variant_ajax,
 )
 
 app_name = 'purchases'
@@ -20,5 +21,6 @@ urlpatterns = [
     path('suppliers/<int:pk>/edit/', SupplierUpdateView.as_view(), name='supplier_edit'),
     path('suppliers/<int:pk>/delete/', SupplierDeleteView.as_view(), name='supplier_delete'),
     path('<int:pk>/', PurchaseDetailView.as_view(), name='detail'),
+    path('ajax/create-variant/', purchase_create_manual_variant_ajax, name='ajax_create_variant'),
     path('<int:pk>/receive/', purchase_receive_view, name='receive'),
 ]

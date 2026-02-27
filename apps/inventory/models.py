@@ -59,6 +59,19 @@ class Variant(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
+    def __str__(self):
+        base = f'{self.product.sku} - {self.product.name}'
+        extras = []
+        if self.size:
+            extras.append(f'Talla: {self.size}')
+        if self.color:
+            extras.append(f'Color: {self.color}')
+        if self.gender:
+            extras.append(f'Género: {self.gender}')
+        if self.barcode:
+            extras.append(f'Barcode: {self.barcode}')
+        return base + (f" | {' | '.join(extras)}" if extras else '')
+
 
 class Stock(models.Model):
     variant = models.OneToOneField(Variant, on_delete=models.CASCADE)

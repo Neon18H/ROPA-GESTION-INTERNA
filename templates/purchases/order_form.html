@@ -4,12 +4,15 @@
   {% csrf_token %}
   <div class="d-flex justify-content-between mb-2">
     <h5 class="mb-0">Nueva orden de compra</h5>
-    <a href="{% url 'purchases:supplier_create' %}" class="btn btn-outline-secondary btn-sm">Nuevo proveedor</a>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#manualVariantModal">+ Agregar variante manual</button>
+      <a href="{% url 'purchases:supplier_create' %}" class="btn btn-outline-secondary btn-sm">Nuevo proveedor</a>
+    </div>
   </div>
   {{ form.non_field_errors }}
   {% for field in form %}
     <div class="mb-2">
-      <label class="form-label">{{ field.label }}</label>
+      <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field }}
       <div class="text-danger small">{{ field.errors }}</div>
     </div>
@@ -32,14 +35,32 @@
   <button class="btn btn-dark btn-sm">Guardar OC</button>
 </form>
 
-<template id="empty-form-template">
-  <tr class="item-form-row">
-    <td>__VARIANT__</td>
-    <td>__QTY__</td>
-    <td>__UNIT_COST__</td>
-    <td><button type="button" class="btn btn-sm btn-outline-danger remove-row">x</button></td>
-  </tr>
-</template>
+<div class="modal fade" id="manualVariantModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Nueva Variante para Compra</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-6"><label class="form-label">Proveedor</label><input class="form-control" id="manualSupplierName" readonly><input type="hidden" id="manualSupplier"></div>
+          <div class="col-md-6"><label class="form-label">SKU Producto</label><input class="form-control" id="manualSku"></div>
+          <div class="col-md-6"><label class="form-label">Nombre Producto</label><input class="form-control" id="manualProductName"></div>
+          <div class="col-md-3"><label class="form-label">Categoría</label><select class="form-select" id="manualCategory"><option value="">---------</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+          <div class="col-md-3"><label class="form-label">Marca</label><select class="form-select" id="manualBrand"><option value="">---------</option>{% for b in brands %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select></div>
+          <div class="col-md-3"><label class="form-label">Talla</label><input class="form-control" list="sizes-list" id="manualSize"></div>
+          <div class="col-md-3"><label class="form-label">Color</label><input class="form-control" list="colors-list" id="manualColor"></div>
+          <div class="col-md-3"><label class="form-label">Género</label><select class="form-select" id="manualGender"><option value="">---------</option>{% for value,label in gender_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+          <div class="col-md-3"><label class="form-label">Barcode</label><input class="form-control" id="manualBarcode"></div>
+          <div class="col-md-3"><label class="form-label">Costo unitario</label><input type="number" min="0" step="0.01" class="form-control" id="manualUnitCost"></div>
+          <div class="col-md-3"><label class="form-label">Cantidad</label><input type="number" min="1" class="form-control" id="manualQty" value="1"></div>
+        </div>
+        <datalist id="sizes-list">{% for s in sizes %}<option value="{{ s }}">{% endfor %}</datalist>
+        <datalist id="colors-list">{% for c in colors %}<option value="{{ c }}">{% endfor %}</datalist>
+        <div id="manualVariantError" class="text-danger small mt-2"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary btn-sm" id="saveManualVariant">Guardar variante</button></div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block extra_js %}
 <script>
@@ -47,12 +68,10 @@
   const totalForms = document.getElementById('id_items-TOTAL_FORMS');
   const addBtn = document.getElementById('addRow');
   const tbody = document.querySelector('#purchaseItems tbody');
+  const supplierSelect = document.getElementById('id_supplier');
   const firstRow = tbody.querySelector('tr');
 
-  function replacePrefix(html, index){ return html.replaceAll('items-0-', `items-${index}-`).replaceAll('items-0', `items-${index}`); }
-
-  addBtn.addEventListener('click', function(){
-    const index = parseInt(totalForms.value, 10);
+  function cloneRow(index){
     const row = firstRow.cloneNode(true);
     row.querySelectorAll('input,select').forEach(el => {
       el.name = el.name.replace('items-0-', `items-${index}-`);
@@ -64,17 +83,68 @@
       if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
     });
     row.querySelectorAll('.text-danger').forEach(e => e.innerHTML = '');
-    tbody.appendChild(row);
+    return row;
+  }
+
+  addBtn.addEventListener('click', function(){
+    const index = parseInt(totalForms.value, 10);
+    tbody.appendChild(cloneRow(index));
     totalForms.value = index + 1;
   });
 
   document.addEventListener('click', function(e){
     if(e.target.classList.contains('remove-row')){
       const rows = tbody.querySelectorAll('.item-form-row');
-      if(rows.length > 1){
-        e.target.closest('tr').remove();
-      }
+      if(rows.length > 1){ e.target.closest('tr').remove(); }
     }
+  });
+
+  const manualModal = document.getElementById('manualVariantModal');
+  manualModal.addEventListener('show.bs.modal', function(){
+    const option = supplierSelect.options[supplierSelect.selectedIndex];
+    document.getElementById('manualSupplier').value = supplierSelect.value;
+    document.getElementById('manualSupplierName').value = option ? option.text : '';
+    document.getElementById('manualVariantError').textContent = '';
+  });
+
+  document.getElementById('saveManualVariant').addEventListener('click', function(){
+    const error = document.getElementById('manualVariantError');
+    error.textContent = '';
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const data = new URLSearchParams({
+      supplier: document.getElementById('manualSupplier').value,
+      sku: document.getElementById('manualSku').value,
+      product_name: document.getElementById('manualProductName').value,
+      category: document.getElementById('manualCategory').value,
+      brand: document.getElementById('manualBrand').value,
+      size: document.getElementById('manualSize').value,
+      color: document.getElementById('manualColor').value,
+      gender: document.getElementById('manualGender').value,
+      barcode: document.getElementById('manualBarcode').value,
+      unit_cost: document.getElementById('manualUnitCost').value,
+      qty: document.getElementById('manualQty').value,
+    });
+    fetch("{% url 'purchases:ajax_create_variant' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+      body: data,
+    }).then(async (response) => {
+      const payload = await response.json();
+      if (!response.ok) {
+        error.textContent = payload.error || JSON.stringify(payload.errors || payload);
+        return;
+      }
+      const index = parseInt(totalForms.value, 10);
+      const row = cloneRow(index);
+      row.querySelector('select').value = payload.variant_id;
+      row.querySelector('input[name$="-qty"]').value = payload.qty;
+      row.querySelector('input[name$="-unit_cost"]').value = payload.unit_cost;
+      tbody.appendChild(row);
+      totalForms.value = index + 1;
+      bootstrap.Modal.getInstance(manualModal).hide();
+    }).catch(() => {
+      error.textContent = 'No fue posible crear la variante manual.';
+    });
   });
 })();
 </script>
