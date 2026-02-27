@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% load media %}
 
-{% block title %}Galería de productos{% endblock %}
-{% block page_title %}Galería de productos{% endblock %}
+{% block title %}Galería de variantes{% endblock %}
+{% block page_title %}Galería de variantes{% endblock %}
 {% block breadcrumbs %}
 <li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
 <li class="breadcrumb-item"><a href="{% url 'inventory:inventory' %}">Inventario</a></li>
@@ -32,8 +32,8 @@
         </select>
       </div>
       <div class="col-12 col-md-4">
-        <label class="form-label">Buscar por nombre o SKU</label>
-        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Ej. suéter, SKU-001">
+        <label class="form-label">Buscar por producto, SKU o variante</label>
+        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Ej. suéter, SKU-001, M, rojo">
       </div>
       <div class="col-12 col-md-2 d-grid">
         <button class="btn btn-primary" type="submit">Aplicar</button>
@@ -43,13 +43,15 @@
 </div>
 
 <div class="row g-3">
-  {% for product in products %}
+  {% for variant in variants %}
     <div class="col-12 col-sm-6 col-md-4 col-lg-3">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body">
           <div class="ratio ratio-1x1 bg-light rounded overflow-hidden mb-3">
-            {% if product.image %}
-              <img src="{% media_url product.image %}" alt="{{ product.name }}" class="w-100 h-100 object-fit-cover">
+            {% if variant.image %}
+              <img src="{% media_url variant.image %}" alt="{{ variant.product.name }}" class="w-100 h-100 object-fit-cover">
+            {% elif variant.product.image %}
+              <img src="{% media_url variant.product.image %}" alt="{{ variant.product.name }}" class="w-100 h-100 object-fit-cover">
             {% else %}
               <div class="d-flex flex-column align-items-center justify-content-center text-muted">
                 <i class="bi bi-image fs-1"></i>
@@ -58,28 +60,23 @@
             {% endif %}
           </div>
 
-          <h3 class="h6 mb-1">{{ product.name }}</h3>
-          <p class="small text-muted mb-1">SKU: {{ product.sku }}</p>
-          <p class="small mb-1">Categoría: {{ product.category|default:'-' }}</p>
-          <p class="small mb-2">Marca: {{ product.brand|default:'-' }}</p>
+          <h3 class="h6 mb-1">{{ variant.product.name }}</h3>
+          <p class="small text-muted mb-2">SKU: {{ variant.product.sku }}</p>
+
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <span class="badge text-bg-light border">Talla: {{ variant.size|default:'-' }}</span>
+            <span class="badge text-bg-light border">Color: {{ variant.color|default:'-' }}</span>
+            <span class="badge text-bg-light border">{{ variant.get_gender_display }}</span>
+          </div>
 
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="fw-semibold">Stock: {{ product.stock_total }}</span>
-            {% if product.stock_total == 0 %}
-              <span class="badge bg-danger">Sin stock</span>
-            {% elif product.stock_total <= product.min_alert %}
-              <span class="badge bg-warning text-dark">Bajo</span>
-            {% else %}
-              <span class="badge bg-success">OK</span>
-            {% endif %}
+            <span class="badge {% if variant.stock_qty == 0 %}bg-danger{% elif variant.stock_qty <= default_min_alert %}bg-warning text-dark{% else %}bg-success{% endif %}">
+              Stock: {{ variant.stock_qty }}
+            </span>
+            <span class="badge bg-primary-subtle text-primary-emphasis">$ {{ variant.default_sale_price|default:variant.price }}</span>
           </div>
 
-          <div class="d-flex gap-2">
-            <a href="{% url 'inventory:product_update' product.id %}" class="btn btn-sm btn-outline-primary">Ver producto</a>
-            {% if product.first_variant_id %}
-              <a href="{% url 'inventory:kardex_in' product.first_variant_id %}" class="btn btn-sm btn-outline-secondary">Kardex</a>
-            {% endif %}
-          </div>
+          <a href="{% url 'inventory:product_update' variant.product.id %}" class="btn btn-sm btn-outline-primary">Ver producto</a>
         </div>
       </div>
     </div>
@@ -87,7 +84,7 @@
     <div class="col-12">
       <div class="card glass-card">
         <div class="card-body text-center text-muted py-5">
-          No hay productos para los filtros seleccionados.
+          No hay variantes para los filtros seleccionados.
         </div>
       </div>
     </div>

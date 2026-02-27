@@ -4,6 +4,10 @@ from django.forms import BaseInlineFormSet, formset_factory, inlineformset_facto
 from .models import Brand, Category, KardexEntry, Product, Variant
 
 
+class NoCurrentlyClearableFileInput(forms.ClearableFileInput):
+    template_name = 'widgets/clearable_file_input_nocurrently.html'
+
+
 class ProductCreateForm(forms.ModelForm):
     initial_qty = forms.IntegerField(min_value=0, required=False, label='Stock inicial', initial=0)
     initial_cost = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Costo inicial', help_text='Opcional para registrar Kardex de entrada inicial.')
@@ -20,7 +24,7 @@ class ProductCreateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
-        self.fields['image'].widget = forms.ClearableFileInput()
+        self.fields['image'].widget = NoCurrentlyClearableFileInput()
         self._apply_bootstrap_styles()
 
         if self.instance and self.instance.pk:
@@ -107,7 +111,7 @@ class ProductUpdateForm(forms.ModelForm):
             default_variant = self.instance.variant_set.order_by('id').first()
             if default_variant:
                 self.fields['initial_sale_price'].initial = default_variant.default_sale_price
-        self.fields['image'].widget = forms.ClearableFileInput()
+        self.fields['image'].widget = NoCurrentlyClearableFileInput()
         text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image', 'initial_sale_price')
         for field_name in text_fields:
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
@@ -222,7 +226,7 @@ class VariantUpdateInlineForm(forms.ModelForm):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control form-control-sm')
         self.fields['gender'].widget.attrs.setdefault('class', 'form-select form-select-sm')
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
-        self.fields['image'].widget = forms.ClearableFileInput(attrs={'class': 'form-control form-control-sm', 'accept': 'image/*', 'capture': 'environment'})
+        self.fields['image'].widget = NoCurrentlyClearableFileInput(attrs={'class': 'form-control form-control-sm', 'accept': 'image/*', 'capture': 'environment'})
 
     def clean_image(self):
         return validate_variant_image(self.cleaned_data.get('image'))
@@ -254,7 +258,7 @@ class VariantForm(forms.ModelForm):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
         self.fields['gender'].widget.attrs.setdefault('class', 'form-select')
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
-        self.fields['image'].widget = forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'})
+        self.fields['image'].widget = NoCurrentlyClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'})
 
     def clean_image(self):
         return validate_variant_image(self.cleaned_data.get('image'))
@@ -265,7 +269,7 @@ class VariantInlineForm(forms.Form):
     color = forms.CharField(max_length=32, required=False, initial='UNICO', widget=forms.TextInput(attrs={'class': 'form-control'}))
     gender = forms.ChoiceField(required=False, choices=Variant.Gender.choices, initial=Variant.Gender.UNISEX, widget=forms.Select(attrs={'class': 'form-select'}))
     barcode = forms.CharField(max_length=64, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    image = forms.ImageField(required=False, widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}))
+    image = forms.ImageField(required=False, widget=NoCurrentlyClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}))
 
     def clean(self):
         cleaned = super().clean()

@@ -76,6 +76,11 @@ class Variant(models.Model):
     def __str__(self):
         return f'{self.product.name} - {self.size}/{self.color}/{self.get_gender_display()}'
 
+    @property
+    def stock_qty(self):
+        stock = getattr(self, 'stock', None)
+        return getattr(stock, 'quantity', 0) or 0
+
 
 class Stock(models.Model):
     variant = models.OneToOneField(Variant, on_delete=models.CASCADE)
