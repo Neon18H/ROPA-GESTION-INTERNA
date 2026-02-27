@@ -25,7 +25,7 @@ class DashboardViewTests(TestCase):
         response = self.client.get(reverse('dashboard:index'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Ventas últimos 30 días')
+        self.assertContains(response, 'Ingresos diarios')
 
 
 class DashboardDualCurrencyTests(TestCase):
