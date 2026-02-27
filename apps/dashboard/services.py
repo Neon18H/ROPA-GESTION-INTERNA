@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
@@ -27,13 +27,15 @@ RANGE_DAYS = {
 
 def get_date_range(range_key):
     key = range_key if range_key in RANGE_DAYS else '30d'
-    now = timezone.localtime()
+    now = timezone.localtime(timezone.now())
     end = now
     days = RANGE_DAYS[key]
+    current_tz = timezone.get_current_timezone()
     if key == 'today':
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start = timezone.make_aware(datetime.combine(now.date(), time.min), current_tz)
     else:
-        start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        start_day = (now - timedelta(days=days - 1)).date()
+        start = timezone.make_aware(datetime.combine(start_day, time.min), current_tz)
     return key, start, end
 
 
@@ -84,7 +86,7 @@ def get_inventory_metrics(org):
 
 
 def get_sales_metrics(org, start, end):
-    sales_qs = Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__gte=start, created_at__lte=end)
+    sales_qs = Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__range=(start, end))
     sales_total = sales_qs.aggregate(
         total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2)
     )['total']
@@ -106,8 +108,7 @@ def get_purchase_metrics(org, start, end):
     purchase_qs = PurchaseOrder.objects.filter(
         organization=org,
         status=PurchaseOrder.Status.RECEIVED,
-        created_at__gte=start,
-        created_at__lte=end,
+        created_at__range=(start, end),
     )
     purchases_total = purchase_qs.aggregate(
         total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2)
@@ -119,7 +120,7 @@ def get_purchase_metrics(org, start, end):
 
 
 def get_customer_metrics(org, start, end):
-    new_customers = Customer.objects.filter(organization=org, created_at__gte=start, created_at__lte=end).count()
+    new_customers = Customer.objects.filter(organization=org, created_at__range=(start, end)).count()
     top_customer = (
         Sale.objects.filter(organization=org, status=Sale.Status.PAID, customer__isnull=False)
         .values('customer__name')
@@ -136,7 +137,7 @@ def get_customer_metrics(org, start, end):
 
 def get_top_products(org, start, end, limit=5):
     return list(
-        SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__gte=start, sale__created_at__lte=end)
+        SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__range=(start, end))
         .values('variant__product__name', 'variant__product__sku')
         .annotate(total_qty=Coalesce(Sum('qty', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD))
         .order_by('-total_qty')[:limit]
@@ -145,7 +146,7 @@ def get_top_products(org, start, end, limit=5):
 
 def get_top_customers(org, start, end, limit=5):
     return list(
-        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__gte=start, created_at__lte=end)
+        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__range=(start, end))
         .values('customer__name')
         .annotate(
             orders=Coalesce(Count('id', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD),
@@ -165,8 +166,8 @@ def get_low_stock_products(org, limit=5):
 
 def get_daily_income_chart(org, start, end):
     sales_rows = list(
-        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__gte=start, created_at__lte=end)
-        .annotate(day=TruncDate('created_at'))
+        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__range=(start, end))
+        .annotate(day=TruncDate('created_at', tzinfo=timezone.get_current_timezone()))
         .values('day')
         .annotate(total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2))
         .order_by('day')
@@ -183,7 +184,7 @@ def get_daily_income_chart(org, start, end):
 
 def get_sales_by_brand_chart(org, start, end):
     rows = list(
-        SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__gte=start, sale__created_at__lte=end)
+        SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__range=(start, end))
         .values('variant__product__brand__name')
         .annotate(total_qty=Coalesce(Sum('qty', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD))
         .order_by('-total_qty')[:8]

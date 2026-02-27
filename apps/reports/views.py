@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.db.models import DecimalField, ExpressionWrapper, F, Max, Q, Sum, Value
@@ -53,7 +53,7 @@ class CustomerReportXlsxView(BaseXlsxReportView):
         ws = wb.active
         ws.title = 'Clientes'
         ws.append([f'Tienda: {self.get_store_name(org)}'])
-        ws.append([f'Generado: {timezone.localtime().strftime("%Y-%m-%d %H:%M") }'])
+        ws.append([f'Generado: {timezone.localtime(timezone.now()).strftime("%Y-%m-%d %H:%M") }'])
         ws.append([])
         ws.append(['Nombre', 'Teléfono', 'Email', 'Creado', 'Total compras', 'Última compra'])
 
@@ -90,7 +90,7 @@ class InventoryReportXlsxView(BaseXlsxReportView):
         ws = wb.active
         ws.title = 'Inventario'
         ws.append([f'Tienda: {self.get_store_name(org)}'])
-        ws.append([f'Generado: {timezone.localtime().strftime("%Y-%m-%d %H:%M") }'])
+        ws.append([f'Generado: {timezone.localtime(timezone.now()).strftime("%Y-%m-%d %H:%M") }'])
         ws.append([])
         ws.append(['SKU', 'Producto', 'Categoría', 'Marca', 'Talla', 'Color', 'Género', 'Barcode', 'Stock', 'Min alerta', 'Costo prom', 'Último costo', 'Valor inventario'])
 
@@ -127,9 +127,14 @@ class FinanceReportXlsxView(BaseXlsxReportView):
         wb = Workbook()
         ws = wb.active
         ws.title = 'Finanzas'
-        today = timezone.localdate()
+        now = timezone.localtime(timezone.now())
+        today = now.date()
+        current_tz = timezone.get_current_timezone()
         start_30 = today - timedelta(days=29)
         month_start = today.replace(day=1)
+        start_30_dt = timezone.make_aware(datetime.combine(start_30, time.min), current_tz)
+        month_start_dt = timezone.make_aware(datetime.combine(month_start, time.min), current_tz)
+        now_dt = now
 
         ws.append([f'Tienda: {self.get_store_name(org)}'])
         ws.append([f'Rango: {start_30} a {today}'])
@@ -137,14 +142,22 @@ class FinanceReportXlsxView(BaseXlsxReportView):
 
         ws.append(['Ventas por día (30 días)'])
         ws.append(['Fecha', 'Total'])
-        sales_daily = Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__date__gte=start_30).annotate(day=TruncDate('created_at')).values('day').annotate(
+        sales_daily = Sale.objects.filter(
+            organization=org,
+            status=Sale.Status.PAID,
+            created_at__range=(start_30_dt, now_dt),
+        ).annotate(day=TruncDate('created_at', tzinfo=current_tz)).values('day').annotate(
             total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2)
         ).order_by('day')
         for row in sales_daily:
             ws.append([row['day'].strftime('%Y-%m-%d'), float(row['total'])])
 
         ws.append([])
-        ventas_mes = Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__date__gte=month_start).aggregate(
+        ventas_mes = Sale.objects.filter(
+            organization=org,
+            status=Sale.Status.PAID,
+            created_at__range=(month_start_dt, now_dt),
+        ).aggregate(
             total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2)
         )['total']
         gastos_mes = Expense.objects.filter(organization=org, date__gte=month_start).aggregate(

@@ -135,8 +135,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'es-co'
-TIME_ZONE = 'UTC'
+TIME_ZONE = get_env(['TIME_ZONE', 'TZ'], 'America/Bogota')
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"

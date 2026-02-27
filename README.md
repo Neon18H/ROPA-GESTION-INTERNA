@@ -25,6 +25,8 @@ Proyecto multi-tenant por organización para gestión interna de tiendas de ropa
 - `ALLOWED_HOSTS=ropa-gestion-interna-production.up.railway.app`
 - `CSRF_TRUSTED_ORIGINS=https://ropa-gestion-interna-production.up.railway.app`
 - `DJANGO_SETTINGS_MODULE=gestion_ropa.settings`
+- `TIME_ZONE=America/Bogota` (opcional; prioridad sobre default)
+- `TZ=America/Bogota` (recomendado en Railway para evitar sobreescritura de zona horaria del contenedor)
 - `WHITENOISE_USE_FINDERS=False` (fallback opcional, activar solo si Railway no ejecuta `collectstatic`)
 
 ## Arranque en Railway (fix definitivo de estáticos)
