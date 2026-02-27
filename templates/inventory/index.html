@@ -94,7 +94,7 @@
           <td class="text-end">
             <a href="{% url 'inventory:product_update' v.product.id %}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Editar"><i class="bi bi-pencil"></i></a>
             <a href="{% url 'inventory:stock_in' v.id %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Ingreso"><i class="bi bi-plus-square"></i></a>
-            <button class="btn btn-sm btn-outline-dark" type="button" data-bs-toggle="tooltip" title="Kardex"><i class="bi bi-clock-history"></i></button>
+            <a href="{% url 'inventory:kardex_in' v.id %}" class="btn btn-sm btn-outline-dark" data-bs-toggle="tooltip" title="Kardex"><i class="bi bi-clock-history"></i></a>
           </td>
         </tr>
         {% endwith %}
