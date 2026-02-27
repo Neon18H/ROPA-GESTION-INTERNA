@@ -45,7 +45,7 @@
           <label class="form-label" for="id_image">Cambiar imagen</label>
           {{ form.image }}
           {{ form.image.errors }}
-          <div class="form-text">PNG, JPG o WEBP · Máx 5MB</div>
+          <div class="form-text">Desde el celular puedes tomar una foto o subir desde galería. PNG, JPG o WEBP · Máx 5MB.</div>
         </div>
       </div>
       <div class="col-12 col-md-6">
@@ -82,6 +82,7 @@
             <th>Color</th>
             <th>Género</th>
             <th>Barcode</th>
+            <th>Imagen</th>
             <th>Precio</th>
             <th>Activo</th>
             <th>Eliminar</th>
@@ -95,6 +96,21 @@
             <td>{{ vform.color }}{{ vform.color.errors }}</td>
             <td>{{ vform.gender }}{{ vform.gender.errors }}</td>
             <td>{{ vform.barcode }}{{ vform.barcode.errors }}</td>
+            <td>
+              {% if vform.instance.image %}
+                <img src="{{ vform.instance.image.url }}" alt="Imagen variante" class="img-thumbnail mb-1" style="max-height:80px;">
+              {% endif %}
+              <input
+                type="file"
+                name="{{ vform.image.html_name }}"
+                id="{{ vform.image.id_for_label }}"
+                class="form-control form-control-sm"
+                accept="image/*"
+                capture="environment"
+              >
+              <div class="form-text">Desde el celular puedes tomar una foto o subir desde galería.</div>
+              {{ vform.image.errors }}
+            </td>
             <td>
               <div class="input-group input-group-sm">
                 <span class="input-group-text">$</span>
@@ -126,28 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
     field.classList.add('form-control-plaintext', 'bg-light', 'border', 'rounded', 'px-2', 'py-1', 'text-muted');
     field.setAttribute('readonly', 'readonly');
   });
-
-  const imageInput = document.getElementById('id_image');
-  const imagePreview = document.getElementById('product-image-preview');
-  const imagePreviewLarge = document.getElementById('product-image-preview-large');
-  const imageEmpty = document.getElementById('product-image-empty');
-
-  if (imageInput && imagePreview && imagePreviewLarge && imageEmpty) {
-    imageInput.addEventListener('change', (event) => {
-      const file = event.target.files && event.target.files[0];
-      if (!file) {
-        return;
-      }
-
-      const objectUrl = URL.createObjectURL(file);
-      imagePreview.src = objectUrl;
-      imagePreviewLarge.src = objectUrl;
-      imagePreview.classList.remove('d-none');
-      imagePreviewLarge.classList.remove('d-none');
-      imageEmpty.classList.remove('d-flex');
-      imageEmpty.classList.add('d-none');
-    });
-  }
 
   const tableBody = document.querySelector('#variantTable tbody');
   const totalForms = document.getElementById('id_variants-TOTAL_FORMS');

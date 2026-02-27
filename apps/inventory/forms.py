@@ -61,7 +61,15 @@ class ProductCreateForm(forms.ModelForm):
         for field_name in text_fields:
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
-        self.fields['image'].widget.attrs.update({'class': 'form-control', 'accept': 'image/*'})
+        self.fields['image'].widget.attrs.update(
+            {
+                'class': 'form-control',
+                'accept': 'image/*',
+                'capture': 'environment',
+                'data-image-preview-target': '#product-image-preview,#product-image-preview-large',
+                'data-image-empty-target': '#product-image-empty',
+            }
+        )
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
 
 
@@ -81,7 +89,15 @@ class ProductUpdateForm(forms.ModelForm):
         text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image')
         for field_name in text_fields:
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
-        self.fields['image'].widget.attrs.update({'class': 'form-control', 'accept': 'image/*'})
+        self.fields['image'].widget.attrs.update(
+            {
+                'class': 'form-control',
+                'accept': 'image/*',
+                'capture': 'environment',
+                'data-image-preview-target': '#product-image-preview,#product-image-preview-large',
+                'data-image-empty-target': '#product-image-empty',
+            }
+        )
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
 
     def clean_sku(self):
@@ -103,6 +119,22 @@ class ProductUpdateForm(forms.ModelForm):
 
 
 def validate_product_image(image):
+    if not image:
+        return image
+
+    allowed_types = {'image/jpeg', 'image/png', 'image/webp'}
+    content_type = getattr(image, 'content_type', '')
+    if content_type not in allowed_types:
+        raise forms.ValidationError('Formato no permitido. Usa JPG, PNG o WEBP.')
+
+    max_size_bytes = 5 * 1024 * 1024
+    if image.size > max_size_bytes:
+        raise forms.ValidationError('La imagen no puede superar 5MB.')
+
+    return image
+
+
+def validate_variant_image(image):
     if not image:
         return image
 
@@ -154,13 +186,30 @@ class BaseVariantUpdateInlineFormSet(BaseInlineFormSet):
                     form.add_error('barcode', 'Ya existe una variante de este producto con este código de barras.')
 
             if price is not None and price < 0:
-                form.add_error('price', 'El precio no puede ser negativo.')
+                    form.add_error('price', 'El precio no puede ser negativo.')
+
+
+class VariantUpdateInlineForm(forms.ModelForm):
+    class Meta:
+        model = Variant
+        fields = ['size', 'color', 'gender', 'barcode', 'image', 'is_active', 'price']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in ('size', 'color', 'barcode', 'price'):
+            self.fields[field_name].widget.attrs.setdefault('class', 'form-control form-control-sm')
+        self.fields['gender'].widget.attrs.setdefault('class', 'form-select form-select-sm')
+        self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
+        self.fields['image'].widget = forms.FileInput(attrs={'class': 'form-control form-control-sm', 'accept': 'image/*', 'capture': 'environment'})
+
+    def clean_image(self):
+        return validate_variant_image(self.cleaned_data.get('image'))
 
 
 VariantUpdateFormSet = inlineformset_factory(
     Product,
     Variant,
-    fields=['size', 'color', 'gender', 'barcode', 'is_active', 'price'],
+    form=VariantUpdateInlineForm,
     extra=1,
     can_delete=True,
     formset=BaseVariantUpdateInlineFormSet,
@@ -174,11 +223,15 @@ ProductForm = ProductCreateForm
 class VariantForm(forms.ModelForm):
     class Meta:
         model = Variant
-        fields = ['product', 'size', 'color', 'gender', 'barcode', 'is_active', 'price']
+        fields = ['product', 'size', 'color', 'gender', 'barcode', 'image', 'is_active', 'price']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['product'].queryset = Product.objects.filter(organization=organization).order_by('name')
+        self.fields['image'].widget = forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'})
+
+    def clean_image(self):
+        return validate_variant_image(self.cleaned_data.get('image'))
 
 
 class VariantInlineForm(forms.Form):
@@ -186,6 +239,7 @@ class VariantInlineForm(forms.Form):
     color = forms.CharField(max_length=32, required=False, initial='UNICO')
     gender = forms.ChoiceField(required=False, choices=Variant.Gender.choices, initial=Variant.Gender.UNISEX)
     barcode = forms.CharField(max_length=64, required=False)
+    image = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}))
 
     def clean(self):
         cleaned = super().clean()

@@ -53,6 +53,10 @@ class ManualVariantForm(forms.Form):
     color = forms.CharField(max_length=32, required=False)
     gender = forms.ChoiceField(choices=Variant.Gender.choices, required=False)
     barcode = forms.CharField(max_length=64, required=False)
+    image = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}),
+    )
     unit_cost = forms.DecimalField(max_digits=12, decimal_places=2, min_value=0)
     qty = forms.IntegerField(min_value=1)
 
@@ -65,7 +69,7 @@ class ManualVariantForm(forms.Form):
         self.fields['category'].queryset = Category.objects.filter(organization=self.organization).order_by('name')
         self.fields['brand'].queryset = Brand.objects.filter(organization=self.organization).order_by('name')
 
-        for field_name in ('sku', 'product_name', 'size', 'color', 'barcode', 'unit_cost', 'qty'):
+        for field_name in ('sku', 'product_name', 'size', 'color', 'barcode', 'unit_cost', 'qty', 'image'):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
         for field_name in ('category', 'brand', 'gender'):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-select')
@@ -75,6 +79,18 @@ class ManualVariantForm(forms.Form):
 
     def clean_product_name(self):
         return (self.cleaned_data.get('product_name') or '').strip()
+
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if not image:
+            return image
+
+        allowed_types = {'image/jpeg', 'image/png', 'image/webp'}
+        if getattr(image, 'content_type', '') not in allowed_types:
+            raise forms.ValidationError('Formato no permitido. Usa JPG, PNG o WEBP.')
+        if image.size > 5 * 1024 * 1024:
+            raise forms.ValidationError('La imagen no puede superar 5MB.')
+        return image
 
 
 class BasePurchaseItemFormSet(BaseFormSet):

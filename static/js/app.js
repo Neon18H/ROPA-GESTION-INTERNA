@@ -42,4 +42,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  document.querySelectorAll('input[type="file"][data-image-preview-target]').forEach((input) => {
+    input.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const previewSelector = input.dataset.imagePreviewTarget;
+      if (!previewSelector) return;
+
+      const objectUrl = URL.createObjectURL(file);
+      document.querySelectorAll(previewSelector).forEach((img) => {
+        if (!img) return;
+        img.src = objectUrl;
+        img.classList.remove('d-none');
+      });
+
+      const emptySelector = input.dataset.imageEmptyTarget;
+      if (!emptySelector) return;
+      document.querySelectorAll(emptySelector).forEach((node) => {
+        if (!node) return;
+        node.classList.remove('d-flex');
+        node.classList.add('d-none');
+      });
+    });
+  });
 });
