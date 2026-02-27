@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% block title %}Reportes · ROPA{% endblock %}
+{% block page_title %}Centro de reportes{% endblock %}
+{% block page_subtitle %}<p class="text-muted mb-0">Exporta información clave en formato Excel.</p>{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Reportes</li>{% endblock %}
 {% block content %}
-<div class="card p-3">
-  <h2>Reportes</h2>
-  <ul>
-    <li><a href="{% url 'reports:customers_xlsx' %}">Descargar Clientes (Excel)</a></li>
-    <li><a href="{% url 'reports:inventory_xlsx' %}">Descargar Inventario (Excel)</a></li>
-    <li><a href="{% url 'reports:finance_xlsx' %}">Descargar Finanzas (Excel)</a></li>
-  </ul>
+<div class="row g-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body"><h3 class="h6">Clientes</h3><p class="text-muted">Base de clientes y datos de contacto.</p><a class="btn btn-outline-primary" href="{% url 'reports:customers_xlsx' %}">Descargar</a></div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body"><h3 class="h6">Inventario</h3><p class="text-muted">Stock, categorías y estado de productos.</p><a class="btn btn-outline-primary" href="{% url 'reports:inventory_xlsx' %}">Descargar</a></div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body"><h3 class="h6">Finanzas</h3><p class="text-muted">Ingresos, compras y egresos.</p><a class="btn btn-outline-primary" href="{% url 'reports:finance_xlsx' %}">Descargar</a></div></div></div>
 </div>
 {% endblock %}
