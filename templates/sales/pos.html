@@ -16,9 +16,9 @@
         </form>
         <div class="list-group small">
           {% for variant in variants %}
-            <button class="list-group-item list-group-item-action add-item" type="button" data-id="{{ variant.id }}" data-name="{{ variant }}" data-price="{{ variant.price }}">
+            <button class="list-group-item list-group-item-action add-item" type="button" data-variant-id="{{ variant.id }}" data-display-name="{{ variant }}" data-default-sale-price="{{ variant.default_sale_price|default_if_none:0 }}">
               <div class="fw-semibold">{{ variant.product.name }}</div>
-              <small class="text-secondary">{{ variant }} · ${{ variant.price }}</small>
+              <small class="text-secondary">{{ variant }} · Precio sugerido: ${{ variant.default_sale_price|default_if_none:0 }}</small>
             </button>
           {% empty %}
             <div class="text-secondary">Sin variantes disponibles.</div>

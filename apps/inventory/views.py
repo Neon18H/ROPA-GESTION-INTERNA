@@ -162,6 +162,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
             raise PermissionDenied('No organization associated to current user.')
         initial_qty = form.cleaned_data.get('initial_qty') or 0
         initial_cost = form.cleaned_data.get('initial_cost') or Decimal('0')
+        initial_sale_price = form.cleaned_data.get('initial_sale_price') or Decimal('0')
 
         with transaction.atomic():
             form.instance.organization = org
@@ -170,7 +171,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
             except ValidationError as exc:
                 form.add_error(None, exc)
                 return self.form_invalid(form)
-            self._save_variants(self.object, variant_formset)
+            self._save_variants(self.object, variant_formset, initial_sale_price=initial_sale_price)
 
             default_variant = self.object.variant_set.order_by('id').first()
             if initial_qty > 0 and default_variant:
@@ -193,7 +194,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
             self.get_context_data(form=form, variant_formset=VariantInlineFormSet(self.request.POST, self.request.FILES, prefix='variants'))
         )
 
-    def _save_variants(self, product, variant_formset):
+    def _save_variants(self, product, variant_formset, initial_sale_price=Decimal('0')):
         created = 0
         for entry in variant_formset.cleaned_data:
             if not entry or entry.get('DELETE'):
@@ -208,12 +209,22 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 barcode=entry.get('barcode', ''),
                 image=entry.get('image'),
                 is_active=True,
+                default_sale_price=initial_sale_price,
+                price=initial_sale_price,
             )
             Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
             created += 1
 
         if created == 0:
-            variant = Variant.objects.create(product=product, size='UNICA', color='UNICO', gender=Variant.Gender.UNISEX, is_active=True)
+            variant = Variant.objects.create(
+                product=product,
+                size='UNICA',
+                color='UNICO',
+                gender=Variant.Gender.UNISEX,
+                is_active=True,
+                default_sale_price=initial_sale_price,
+                price=initial_sale_price,
+            )
             Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
 
     def _safe_success_message(self, message):
@@ -286,10 +297,21 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
                     variant.size = (variant.size or 'UNICA').strip() or 'UNICA'
                     variant.color = (variant.color or 'UNICO').strip() or 'UNICO'
                     variant.gender = variant.gender or Variant.Gender.UNISEX
+                    if variant.price in (None, 0):
+                        variant.price = variant.default_sale_price or 0
                     variant.save()
                     Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0, 'min_alert': 0})
 
                 variant_formset.save_m2m()
+
+                initial_sale_price = form.cleaned_data.get('initial_sale_price')
+                if initial_sale_price is not None:
+                    default_variant = self.object.variant_set.order_by('id').first()
+                    if default_variant:
+                        default_variant.default_sale_price = initial_sale_price
+                        if default_variant.price in (None, 0):
+                            default_variant.price = initial_sale_price
+                        default_variant.save(update_fields=['default_sale_price', 'price'])
 
         except IntegrityError as exc:
             error_msg = str(exc)

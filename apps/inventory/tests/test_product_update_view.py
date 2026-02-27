@@ -29,7 +29,7 @@ class ProductUpdateViewTenantTests(TestCase):
             sku='SKU-001',
             name='Producto original',
         )
-        self.variant = Variant.objects.create(product=self.product, size='UNICA', color='UNICO', gender=Variant.Gender.UNISEX, price=10)
+        self.variant = Variant.objects.create(product=self.product, size='UNICA', color='UNICO', gender=Variant.Gender.UNISEX, price=10, default_sale_price=10)
         Stock.objects.create(variant=self.variant, quantity=3)
         self.client.force_login(self.user)
 
@@ -48,7 +48,7 @@ class ProductUpdateViewTenantTests(TestCase):
             'variants-0-color': 'Negro',
             'variants-0-gender': Variant.Gender.UNISEX,
             'variants-0-barcode': 'BAR-001',
-            'variants-0-price': '19.90',
+            'variants-0-default_sale_price': '19.90',
             'variants-0-is_active': 'on',
         }
 
@@ -68,7 +68,7 @@ class ProductUpdateViewTenantTests(TestCase):
         self.product.refresh_from_db()
         self.variant.refresh_from_db()
         self.assertEqual(self.product.name, 'Producto editado')
-        self.assertEqual(self.variant.price, self.variant.price.__class__('19.90'))
+        self.assertEqual(self.variant.default_sale_price, self.variant.default_sale_price.__class__('19.90'))
 
     def test_post_handles_integrity_error_and_shows_field_error(self):
         url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
@@ -90,12 +90,12 @@ class ProductUpdateViewTenantTests(TestCase):
     def test_invalid_variant_formset_returns_200_with_errors(self):
         url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
         payload = self._payload()
-        payload['variants-0-price'] = '-1'
+        payload['variants-0-default_sale_price'] = '-1'
 
         response = self.client.post(url, payload)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'precio no puede ser negativo', status_code=200)
+        self.assertContains(response, 'precio sugerido no puede ser negativo', status_code=200)
 
     def test_add_variant_creates_stock_row(self):
         url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
@@ -108,7 +108,7 @@ class ProductUpdateViewTenantTests(TestCase):
                 'variants-1-color': 'Azul',
                 'variants-1-gender': Variant.Gender.HOMBRE,
                 'variants-1-barcode': 'BAR-NEW',
-                'variants-1-price': '49.99',
+                'variants-1-default_sale_price': '49.99',
                 'variants-1-is_active': 'on',
             }
         )

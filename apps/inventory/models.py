@@ -72,32 +72,21 @@ class Variant(models.Model):
     image = models.ImageField(upload_to=variant_image_upload_to, storage=get_media_storage, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    default_sale_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
-        product = getattr(self, 'product', None)
-        product_sku = (getattr(product, 'sku', '') or '').strip()
-        product_name = (getattr(product, 'name', '') or '').strip()
-        if product_sku and product_name:
-            base = f'{product_sku} - {product_name}'
-        else:
-            base = product_sku or product_name or f'Variant #{getattr(self, "pk", "")}'
+        product_name = ((getattr(self, 'product', None) and self.product.name) or '').strip()
+        base = product_name or f'Variant #{getattr(self, "pk", "")}'
 
         extras = []
         size = (getattr(self, 'size', '') or '').strip()
         color = (getattr(self, 'color', '') or '').strip()
-        gender = (getattr(self, 'gender', '') or '').strip()
-        barcode = (getattr(self, 'barcode', '') or '').strip()
-
         if size:
-            extras.append(f'Talla: {size}')
+            extras.append(size)
         if color:
-            extras.append(f'Color: {color}')
-        if gender:
-            extras.append(f'Género: {gender}')
-        if barcode:
-            extras.append(f'Barcode: {barcode}')
-        return base + (f" | {' | '.join(extras)}" if extras else '')
+            extras.append(color)
+        return f"{base} - {'/'.join(extras)}" if extras else base
 
 
 class Stock(models.Model):
