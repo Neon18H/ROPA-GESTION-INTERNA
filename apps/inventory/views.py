@@ -7,7 +7,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import F, Q
+from django.db.models import F, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -450,7 +451,17 @@ def inventory_view(request):
         ignore_conflicts=True,
     )
 
-    variants = Variant.objects.filter(product__organization=org, product__is_active=True).select_related('product', 'product__category', 'product__brand', 'product__stock')
+    stock_subquery = Stock.objects.filter(variant_id=OuterRef('pk')).values('quantity')[:1]
+    variants = (
+        Variant.objects.filter(product__organization=org, product__is_active=True, is_active=True)
+        .select_related('product', 'product__category', 'product__brand', 'product__stock')
+        .annotate(
+            stock_qty_value=Coalesce(
+                Subquery(stock_subquery, output_field=IntegerField()),
+                Value(0),
+            )
+        )
+    )
 
     category_id = request.GET.get('category')
     brand_id = request.GET.get('brand')
@@ -461,7 +472,7 @@ def inventory_view(request):
     if brand_id:
         variants = variants.filter(product__brand_id=brand_id)
     if low_stock:
-        variants = variants.filter(Q(product__stock__qty__lte=0) | Q(product__stock__isnull=True))
+        variants = variants.filter(stock_qty_value__lte=0)
 
     context = {
         'variants': variants.order_by('product__name', 'size', 'color'),
