@@ -1,22 +1,61 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load money %}
-{% block title %}Dashboard · ROPA{% endblock %}
+{% block title %}Dashboard · ERP Cloud{% endblock %}
 {% block page_title %}Dashboard Ejecutivo{% endblock %}
-{% block page_subtitle %}<p class="text-muted mb-0">Vista general de ventas, inventario y rendimiento comercial.</p>{% endblock %}
-{% block breadcrumbs %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
+{% block breadcrumbs %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
 {% block content %}
 <div class="row g-3 mb-4">
-  <div class="col-md-6 col-xl-3"><div class="card kpi-card"><div class="card-body"><small><i class="bi bi-cash-coin me-1"></i>Ventas hoy</small><h3>{{ sales_today_total|default:0|money }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card kpi-card"><div class="card-body"><small><i class="bi bi-graph-up-arrow me-1"></i>Ventas mes</small><h3>{{ sales_month_total|default:0|money }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card kpi-card"><div class="card-body"><small><i class="bi bi-box-seam me-1"></i>Inventario total</small><h3>{{ inventory_value|default:0|money }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card kpi-card"><div class="card-body"><small><i class="bi bi-exclamation-triangle me-1"></i>Bajo stock</small><h3>{{ low_stock_count|default:0 }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy (monto)</small><h3>{{ sales_today_total|default:0|money }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes (monto)</small><h3>{{ sales_month_total|default:0|money }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Inventario valorizado</small><h3>{{ inventory_value|default:0|money }}</h3></div></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Margen estimado</small><h3>{{ estimated_margin|default:0|money }}</h3></div></div></div>
 </div>
+
+<div class="row g-3 mb-4">
+  <div class="col-xl-8">
+    <div class="card glass-card h-100">
+      <div class="card-header border-0"><h3 class="card-title mb-0">Ventas últimos 30 días</h3></div>
+      <div class="card-body"><canvas id="salesLineChart" height="120"></canvas></div>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card glass-card h-100">
+      <div class="card-header border-0"><h3 class="card-title mb-0">Top clientes (gráfico)</h3></div>
+      <div class="card-body"><canvas id="topCustomersChart" height="120"></canvas></div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-3">
-  <div class="col-xl-8"><div class="card"><div class="card-body"><h3 class="h6">Ventas últimos 30 días</h3><canvas id="salesLineChart" height="120"></canvas></div></div></div>
-  <div class="col-xl-4"><div class="card"><div class="card-body"><h3 class="h6">Top clientes</h3><canvas id="topCustomersChart" height="120"></canvas></div></div></div>
+  <div class="col-12">
+    <div class="card glass-card">
+      <div class="card-header border-0"><h3 class="card-title mb-0">Top clientes</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 data-table-saas">
+            <thead><tr><th>Cliente</th><th>Pedidos</th><th>Total gastado</th></tr></thead>
+            <tbody>
+              {% for c in top_customers %}
+                <tr><td>{{ c.customer__name|default:'Sin cliente' }}</td><td>{{ c.orders }}</td><td>{{ c.total_spent|money }}</td></tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-center py-4">No hay ventas todavía.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
 {{ sales_line_data|json_script:'sales-line-data' }}
 {{ top_customers_chart_data|json_script:'top-customers-chart-data' }}
 {% endblock %}
-{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="{% static 'js/dashboard.js' %}"></script>{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

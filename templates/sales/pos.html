@@ -1,18 +1,82 @@
 {% extends 'base.html' %}
 {% block page_title %}POS{% endblock %}
-{% block page_subtitle %}<p class="text-muted mb-0">Punto de venta ágil para registrar ventas y clientes.</p>{% endblock %}
-{% block breadcrumbs %}<li class="breadcrumb-item"><a href="{% url 'sales:list' %}">Ventas</a></li><li class="breadcrumb-item active">POS</li>{% endblock %}
 {% block content %}
 <div class="row g-3">
-  <div class="col-lg-5"><div class="card h-100"><div class="card-header"><strong>Buscar productos</strong></div><div class="card-body"><form method="get" class="mb-3"><div class="input-group"><input name="q" value="{{ query }}" class="form-control" placeholder="SKU, barcode o nombre"><button class="btn btn-outline-primary">Buscar</button></div></form><div class="list-group small">{% for v in variants %}<button type="button" class="list-group-item list-group-item-action add-item" data-id="{{ v.id }}" data-name="{{ v.product.name }} {{ v.size }}/{{ v.color }}" data-price="0">{{ v.product.sku }} · {{ v.product.name }} {{ v.size }}/{{ v.color }} <span class="text-muted">(Stock: {{ v.stock.quantity|default:0 }})</span></button>{% empty %}<div class="text-muted">Sin resultados.</div>{% endfor %}</div></div></div></div>
-  <div class="col-lg-7"><form method="post" class="card">{% csrf_token %}<div class="card-header"><strong>Registrar venta</strong></div><div class="card-body">{{ form.customer.label_tag }} {{ form.customer }}<hr><div class="row g-2"><div class="col-md-6">{{ form.customer_name.label_tag }}{{ form.customer_name }}</div><div class="col-md-6">{{ form.customer_phone.label_tag }}{{ form.customer_phone }}</div><div class="col-md-6">{{ form.customer_email.label_tag }}{{ form.customer_email }}</div><div class="col-md-6">{{ form.customer_document_id.label_tag }}{{ form.customer_document_id }}</div></div><hr>{{ form.payment_method.label_tag }}{{ form.payment_method }}{{ items_formset.management_form }}<div class="table-responsive"><table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>IVA %</th><th>Desc</th><th></th></tr></thead><tbody></tbody></table></div></div><div class="card-footer text-end"><button class="btn btn-success">Confirmar venta</button></div></form></div>
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><strong>Buscar productos</strong></div>
+      <div class="card-body">
+        <form method="get" class="mb-3"><div class="input-group"><input name="q" value="{{ query }}" class="form-control" placeholder="SKU, barcode o nombre"><button class="btn btn-outline-primary">Buscar</button></div></form>
+        <div class="list-group small">
+          {% for v in variants %}
+          <button type="button" class="list-group-item list-group-item-action add-item" data-id="{{ v.id }}" data-name="{{ v.product.name }} {{ v.size }}/{{ v.color }}" data-price="0">{{ v.product.sku }} · {{ v.product.name }} {{ v.size }}/{{ v.color }} (Stock: {{ v.stock.quantity|default:0 }})</button>
+          {% empty %}<div class="text-muted">Sin resultados.</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <form method="post" class="card">{% csrf_token %}
+      <div class="card-header"><strong>Registrar venta</strong></div>
+      <div class="card-body">
+        {{ form.customer.label_tag }} {{ form.customer }}
+        <hr>
+        <h6>O crear cliente</h6>
+        <div class="row g-2">
+          <div class="col-md-6">{{ form.customer_name.label_tag }}{{ form.customer_name }}</div>
+          <div class="col-md-6">{{ form.customer_phone.label_tag }}{{ form.customer_phone }}</div>
+          <div class="col-md-6">{{ form.customer_email.label_tag }}{{ form.customer_email }}</div>
+          <div class="col-md-6">{{ form.customer_document_id.label_tag }}{{ form.customer_document_id }}</div>
+        </div>
+        <hr>
+        {{ form.payment_method.label_tag }}{{ form.payment_method }}
+
+        {{ items_formset.management_form }}
+        <table class="table mt-3" id="itemsTable"><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>IVA % (opcional)</th><th>Desc</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card-footer text-end"><button class="btn btn-success">Confirmar venta</button></div>
+    </form>
+  </div>
 </div>
 {% endblock %}
 {% block extra_js %}
 <script>
-const tableBody = document.querySelector('#itemsTable tbody'); const totalFormsInput = document.querySelector('#id_items-TOTAL_FORMS');
-function bindRowEvents(row){row.querySelector('.remove-item').addEventListener('click',()=>{row.remove();reindexRows();});}
-function reindexRows(){const rows=[...tableBody.querySelectorAll('tr')];rows.forEach((row,idx)=>{row.querySelectorAll('input').forEach(input=>{const field=input.dataset.field;input.name=`items-${idx}-${field}`;input.id=`id_items-${idx}-${field}`;});});totalFormsInput.value=rows.length;}
-document.querySelectorAll('.add-item').forEach(btn=>btn.addEventListener('click',function(){const idx=tableBody.querySelectorAll('tr').length;const row=document.createElement('tr');row.innerHTML=`<td>${this.dataset.name}<input type='hidden' data-field='variant' name='items-${idx}-variant' value='${this.dataset.id}'></td><td><input class='form-control' data-field='quantity' type='number' name='items-${idx}-quantity' value='1' min='1'></td><td><input class='form-control' data-field='unit_price' type='number' name='items-${idx}-unit_price' value='${this.dataset.price}' step='0.01'></td><td><input class='form-control' data-field='tax_rate' type='number' name='items-${idx}-tax_rate' value='' step='0.01' min='0' max='100'></td><td><input class='form-control' data-field='discount' type='number' name='items-${idx}-discount' value='0' step='0.01'></td><td><button type='button' class='btn btn-sm btn-outline-danger remove-item'>×</button></td>`;tableBody.appendChild(row);bindRowEvents(row);reindexRows();}));
+const tableBody = document.querySelector('#itemsTable tbody');
+const totalFormsInput = document.querySelector('#id_items-TOTAL_FORMS');
+
+function bindRowEvents(row) {
+  row.querySelector('.remove-item').addEventListener('click', function(){
+    row.remove();
+    reindexRows();
+  });
+}
+
+function reindexRows(){
+  const rows = [...tableBody.querySelectorAll('tr')];
+  rows.forEach((row, idx) => {
+    row.querySelectorAll('input').forEach(input => {
+      const field = input.dataset.field;
+      input.name = `items-${idx}-${field}`;
+      input.id = `id_items-${idx}-${field}`;
+    });
+  });
+  totalFormsInput.value = rows.length;
+}
+
+document.querySelectorAll('.add-item').forEach(btn => {
+  btn.addEventListener('click', function(){
+    const idx = tableBody.querySelectorAll('tr').length;
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${this.dataset.name}<input type='hidden' data-field='variant' name='items-${idx}-variant' value='${this.dataset.id}'></td>
+      <td><input class='form-control' data-field='quantity' type='number' name='items-${idx}-quantity' value='1' min='1'></td>
+      <td><input class='form-control' data-field='unit_price' type='number' name='items-${idx}-unit_price' value='${this.dataset.price}' step='0.01'></td>
+      <td><input class='form-control' data-field='tax_rate' type='number' name='items-${idx}-tax_rate' value='' step='0.01' min='0' max='100'></td>
+      <td><input class='form-control' data-field='discount' type='number' name='items-${idx}-discount' value='0' step='0.01'></td>
+      <td><button type='button' class='btn btn-sm btn-outline-danger remove-item'>×</button></td>`;
+    tableBody.appendChild(row);
+    bindRowEvents(row);
+    reindexRows();
+  })
+});
 </script>
 {% endblock %}

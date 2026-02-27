@@ -137,8 +137,8 @@ class RoadmapView(LoginRequiredMixin, TemplateView):
             },
             {
                 'title': 'Mejoras en el dashboard principal',
-                'status': 'En progreso',
-                'progress': 30,
+                'status': 'Planificado',
+                'progress': 15,
             },
         ]
         return ctx
