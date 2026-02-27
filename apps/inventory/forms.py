@@ -7,10 +7,11 @@ from .models import Brand, Category, KardexEntry, Product, Variant
 class ProductCreateForm(forms.ModelForm):
     initial_qty = forms.IntegerField(min_value=0, required=False, label='Stock inicial', initial=0)
     initial_cost = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Costo inicial', help_text='Opcional para registrar Kardex de entrada inicial.')
+    initial_sale_price = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Precio sugerido', initial=0)
 
     class Meta:
         model = Product
-        fields = ['sku', 'name', 'category', 'brand', 'description', 'image', 'is_active', 'initial_qty', 'initial_cost']
+        fields = ['sku', 'name', 'category', 'brand', 'description', 'image', 'is_active', 'initial_qty', 'initial_cost', 'initial_sale_price']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,10 +26,13 @@ class ProductCreateForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields['initial_qty'].required = False
             self.fields['initial_cost'].required = False
+            self.fields['initial_sale_price'].required = False
             self.fields['initial_qty'].disabled = True
             self.fields['initial_cost'].disabled = True
+            self.fields['initial_sale_price'].disabled = True
             self.fields['initial_qty'].help_text = 'Solo creación.'
             self.fields['initial_cost'].help_text = 'Solo creación.'
+            self.fields['initial_sale_price'].help_text = 'Solo creación.'
 
     def clean_sku(self):
         sku = (self.cleaned_data.get('sku') or '').strip()
@@ -57,7 +61,7 @@ class ProductCreateForm(forms.ModelForm):
         return validate_product_image(self.cleaned_data.get('image'))
 
     def _apply_bootstrap_styles(self):
-        text_fields = ('sku', 'name', 'category', 'brand', 'description', 'initial_qty', 'initial_cost', 'image')
+        text_fields = ('sku', 'name', 'category', 'brand', 'description', 'initial_qty', 'initial_cost', 'initial_sale_price', 'image')
         for field_name in text_fields:
             if field_name in self.fields:
                 self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
@@ -74,6 +78,8 @@ class ProductCreateForm(forms.ModelForm):
 
 
 class ProductUpdateForm(forms.ModelForm):
+    initial_sale_price = forms.DecimalField(min_value=0, decimal_places=2, max_digits=12, required=False, label='Precio sugerido', initial=0)
+
     class Meta:
         model = Product
         fields = ['sku', 'name', 'category', 'brand', 'description', 'image', 'is_active']
@@ -85,8 +91,12 @@ class ProductUpdateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
+        if self.instance and self.instance.pk:
+            default_variant = self.instance.variant_set.order_by('id').first()
+            if default_variant:
+                self.fields['initial_sale_price'].initial = default_variant.default_sale_price
         self.fields['image'].widget = forms.FileInput()
-        text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image')
+        text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image', 'initial_sale_price')
         for field_name in text_fields:
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
         self.fields['image'].widget.attrs.update(
@@ -167,7 +177,7 @@ class BaseVariantUpdateInlineFormSet(BaseInlineFormSet):
             color = (cleaned.get('color') or '').strip().upper() or 'UNICO'
             gender = cleaned.get('gender') or Variant.Gender.UNISEX
             barcode = (cleaned.get('barcode') or '').strip()
-            price = cleaned.get('price')
+            default_sale_price = cleaned.get('default_sale_price')
 
             key = (size, color, gender)
             if key in combinations:
@@ -185,18 +195,18 @@ class BaseVariantUpdateInlineFormSet(BaseInlineFormSet):
                 if qs.exists():
                     form.add_error('barcode', 'Ya existe una variante de este producto con este código de barras.')
 
-            if price is not None and price < 0:
-                    form.add_error('price', 'El precio no puede ser negativo.')
+            if default_sale_price is not None and default_sale_price < 0:
+                form.add_error('default_sale_price', 'El precio sugerido no puede ser negativo.')
 
 
 class VariantUpdateInlineForm(forms.ModelForm):
     class Meta:
         model = Variant
-        fields = ['size', 'color', 'gender', 'barcode', 'image', 'is_active', 'price']
+        fields = ['size', 'color', 'gender', 'barcode', 'image', 'is_active', 'default_sale_price']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field_name in ('size', 'color', 'barcode', 'price'):
+        for field_name in ('size', 'color', 'barcode', 'default_sale_price'):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control form-control-sm')
         self.fields['gender'].widget.attrs.setdefault('class', 'form-select form-select-sm')
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
@@ -223,7 +233,7 @@ ProductForm = ProductCreateForm
 class VariantForm(forms.ModelForm):
     class Meta:
         model = Variant
-        fields = ['product', 'size', 'color', 'gender', 'barcode', 'image', 'is_active', 'price']
+        fields = ['product', 'size', 'color', 'gender', 'barcode', 'image', 'is_active', 'default_sale_price']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)

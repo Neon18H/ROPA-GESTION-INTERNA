@@ -24,7 +24,7 @@ class BillingInvoiceTests(TestCase):
         )
         self.customer = Customer.objects.create(organization=self.org, name='Cliente Demo')
         self.product = Product.objects.create(organization=self.org, sku='SKU-1', name='Camisa')
-        self.variant = Variant.objects.create(product=self.product, size='M', color='Azul', price=Decimal('100.00'))
+        self.variant = Variant.objects.create(product=self.product, size='M', color='Azul', price=Decimal('100.00'), default_sale_price=Decimal('100.00'))
         self.sale = Sale.objects.create(organization=self.org, number=1, customer=self.customer, created_by=self.user)
 
     def test_receipt_renders_with_billing_settings(self):
@@ -83,7 +83,7 @@ class POSCustomerModesTests(TestCase):
             role=User.Role.ADMIN,
         )
         self.product = Product.objects.create(organization=self.org, sku='SKU-2', name='Pantalón')
-        self.variant = Variant.objects.create(product=self.product, size='L', color='Negro', price=Decimal('90.00'))
+        self.variant = Variant.objects.create(product=self.product, size='L', color='Negro', price=Decimal('90.00'), default_sale_price=Decimal('90.00'))
         Stock.objects.create(variant=self.variant, quantity=15)
         self.customer = Customer.objects.create(organization=self.org, name='Cliente Existente')
 
@@ -110,6 +110,14 @@ class POSCustomerModesTests(TestCase):
         response = self.client.get(reverse('sales:pos'))
         self.assertEqual(response.status_code, 200)
 
+
+    def test_pos_get_includes_default_sale_price_data(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sales:pos'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-default-sale-price="90.00"')
+
     def test_pos_post_existing_customer_creates_sale(self):
         self.client.force_login(self.user)
         response = self.client.post(reverse('sales:pos'), data=self._payload())
@@ -118,6 +126,14 @@ class POSCustomerModesTests(TestCase):
         sale = Sale.objects.latest('id')
         self.assertEqual(sale.customer_id, self.customer.id)
         self.assertEqual(sale.organization_id, self.org.id)
+
+    def test_pos_manual_unit_price_override_is_persisted(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('sales:pos'), data=self._payload(**{'items-0-unit_price': '120.00'}))
+
+        self.assertEqual(response.status_code, 302)
+        sale_item = SaleItem.objects.latest('id')
+        self.assertEqual(sale_item.unit_price, Decimal('120.00'))
 
     def test_pos_post_new_customer_creates_customer_and_sale(self):
         self.client.force_login(self.user)
