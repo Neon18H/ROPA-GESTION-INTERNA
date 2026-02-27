@@ -44,7 +44,7 @@
         <div class="row g-2">
           <div class="col-md-6">
             <label class="form-label" for="{{ manual_variant_form.supplier.id_for_label }}">{{ manual_variant_form.supplier.label }}</label>
-            {{ manual_variant_form.supplier.as_widget(attrs={'id': 'manual_variant_supplier', 'class': 'form-select'}) }}
+            {{ manual_variant_form.supplier }}
             <div id="manualSupplierError" class="invalid-feedback"></div>
           </div>
           <div class="col-md-6"><label class="form-label">SKU Producto</label><input class="form-control" id="manualSku"></div>
