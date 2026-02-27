@@ -43,3 +43,19 @@ class PurchaseItem(models.Model):
     qty = models.IntegerField()
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
     line_total = models.DecimalField(max_digits=12, decimal_places=2)
+
+
+class SupplierVariant(OrganizationScopedModel):
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='supplier_variants')
+    variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name='supplier_links')
+    supplier_sku = models.CharField(max_length=64, blank=True)
+    last_purchase_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['organization', 'supplier', 'variant'], name='uq_org_supplier_variant')
+        ]
+
+    def __str__(self):
+        return f'{self.supplier.name} - {self.variant}'

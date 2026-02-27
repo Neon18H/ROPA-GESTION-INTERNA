@@ -1,8 +1,8 @@
 from django import forms
 from django.forms import BaseFormSet, formset_factory
 
-from apps.inventory.models import Variant
-from .models import PurchaseOrder, Supplier
+from apps.inventory.models import Brand, Category, Variant
+from .models import PurchaseOrder, Supplier, SupplierVariant
 
 
 class SupplierForm(forms.ModelForm):
@@ -12,14 +12,16 @@ class SupplierForm(forms.ModelForm):
 
 
 class PurchaseOrderForm(forms.ModelForm):
+    show_all_variants = forms.BooleanField(required=False, initial=False, label='Mostrar todas las variantes')
+
     class Meta:
         model = PurchaseOrder
         fields = ['supplier', 'notes']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.organization = organization
         self.fields['supplier'].queryset = Supplier.objects.filter(organization=organization, is_active=True).order_by('name')
-        self.fields['supplier'].label_from_instance = lambda supplier: supplier.name
 
 
 class PurchaseItemForm(forms.Form):
@@ -27,9 +29,45 @@ class PurchaseItemForm(forms.Form):
     qty = forms.IntegerField(min_value=1)
     unit_cost = forms.DecimalField(max_digits=12, decimal_places=2, min_value=0)
 
+    def __init__(self, *args, organization=None, supplier_id=None, show_all=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        queryset = Variant.objects.filter(product__organization=organization, is_active=True).select_related('product').order_by('product__name')
+        if supplier_id and not show_all:
+            supplier_variants = SupplierVariant.objects.filter(
+                organization=organization,
+                supplier_id=supplier_id,
+                is_active=True,
+            ).values_list('variant_id', flat=True)
+            if supplier_variants:
+                queryset = queryset.filter(id__in=supplier_variants)
+        self.fields['variant'].queryset = queryset
+
+
+class ManualVariantForm(forms.Form):
+    supplier = forms.ModelChoiceField(queryset=Supplier.objects.none())
+    sku = forms.CharField(max_length=64)
+    product_name = forms.CharField(max_length=180)
+    category = forms.ModelChoiceField(queryset=Category.objects.none(), required=False)
+    brand = forms.ModelChoiceField(queryset=Brand.objects.none(), required=False)
+    size = forms.CharField(max_length=16, required=False)
+    color = forms.CharField(max_length=32, required=False)
+    gender = forms.ChoiceField(choices=Variant.Gender.choices, required=False)
+    barcode = forms.CharField(max_length=64, required=False)
+    unit_cost = forms.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    qty = forms.IntegerField(min_value=1)
+
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['variant'].queryset = Variant.objects.filter(product__organization=organization, is_active=True).select_related('product')
+        self.organization = organization
+        self.fields['supplier'].queryset = Supplier.objects.filter(organization=organization, is_active=True).order_by('name')
+        self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
+        self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
+
+    def clean_sku(self):
+        return (self.cleaned_data.get('sku') or '').strip()
+
+    def clean_product_name(self):
+        return (self.cleaned_data.get('product_name') or '').strip()
 
 
 class BasePurchaseItemFormSet(BaseFormSet):
