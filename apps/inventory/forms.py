@@ -20,7 +20,7 @@ class ProductCreateForm(forms.ModelForm):
         self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
-        self.fields['image'].widget = forms.FileInput()
+        self.fields['image'].widget = forms.ClearableFileInput()
         self._apply_bootstrap_styles()
 
         if self.instance and self.instance.pk:
@@ -56,6 +56,18 @@ class ProductCreateForm(forms.ModelForm):
         if initial_qty == 0:
             cleaned_data['initial_cost'] = initial_cost or 0
         return cleaned_data
+
+    def clean_initial_qty(self):
+        value = self.cleaned_data.get('initial_qty')
+        return 0 if value is None else max(value, 0)
+
+    def clean_initial_cost(self):
+        value = self.cleaned_data.get('initial_cost')
+        return 0 if value is None else max(value, 0)
+
+    def clean_initial_sale_price(self):
+        value = self.cleaned_data.get('initial_sale_price')
+        return 0 if value is None else max(value, 0)
 
     def clean_image(self):
         return validate_product_image(self.cleaned_data.get('image'))
@@ -95,7 +107,7 @@ class ProductUpdateForm(forms.ModelForm):
             default_variant = self.instance.variant_set.order_by('id').first()
             if default_variant:
                 self.fields['initial_sale_price'].initial = default_variant.default_sale_price
-        self.fields['image'].widget = forms.FileInput()
+        self.fields['image'].widget = forms.ClearableFileInput()
         text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image', 'initial_sale_price')
         for field_name in text_fields:
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
@@ -210,7 +222,7 @@ class VariantUpdateInlineForm(forms.ModelForm):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control form-control-sm')
         self.fields['gender'].widget.attrs.setdefault('class', 'form-select form-select-sm')
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
-        self.fields['image'].widget = forms.FileInput(attrs={'class': 'form-control form-control-sm', 'accept': 'image/*', 'capture': 'environment'})
+        self.fields['image'].widget = forms.ClearableFileInput(attrs={'class': 'form-control form-control-sm', 'accept': 'image/*', 'capture': 'environment'})
 
     def clean_image(self):
         return validate_variant_image(self.cleaned_data.get('image'))
@@ -238,26 +250,33 @@ class VariantForm(forms.ModelForm):
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['product'].queryset = Product.objects.filter(organization=organization).order_by('name')
-        self.fields['image'].widget = forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'})
+        for field_name in ('product', 'size', 'color', 'barcode', 'default_sale_price'):
+            self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['gender'].widget.attrs.setdefault('class', 'form-select')
+        self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
+        self.fields['image'].widget = forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'})
 
     def clean_image(self):
         return validate_variant_image(self.cleaned_data.get('image'))
 
 
 class VariantInlineForm(forms.Form):
-    size = forms.CharField(max_length=16, required=False, initial='UNICA')
-    color = forms.CharField(max_length=32, required=False, initial='UNICO')
-    gender = forms.ChoiceField(required=False, choices=Variant.Gender.choices, initial=Variant.Gender.UNISEX)
-    barcode = forms.CharField(max_length=64, required=False)
-    image = forms.ImageField(required=False, widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}))
+    size = forms.CharField(max_length=16, required=False, initial='UNICA', widget=forms.TextInput(attrs={'class': 'form-control'}))
+    color = forms.CharField(max_length=32, required=False, initial='UNICO', widget=forms.TextInput(attrs={'class': 'form-control'}))
+    gender = forms.ChoiceField(required=False, choices=Variant.Gender.choices, initial=Variant.Gender.UNISEX, widget=forms.Select(attrs={'class': 'form-select'}))
+    barcode = forms.CharField(max_length=64, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    image = forms.ImageField(required=False, widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}))
 
     def clean(self):
         cleaned = super().clean()
-        if any(cleaned.get(field) for field in ('size', 'color', 'barcode')):
+        if any(cleaned.get(field) for field in ('size', 'color', 'barcode', 'gender')):
             cleaned['size'] = cleaned.get('size') or 'UNICA'
             cleaned['color'] = cleaned.get('color') or 'UNICO'
             cleaned['gender'] = cleaned.get('gender') or Variant.Gender.UNISEX
         return cleaned
+
+    def clean_image(self):
+        return validate_variant_image(self.cleaned_data.get('image'))
 
 
 VariantInlineFormSet = formset_factory(VariantInlineForm, extra=1, can_delete=True)

@@ -59,6 +59,7 @@
         <th>Marca</th>
         <th>Talla</th>
         <th>Color</th>
+        <th>Género</th>
         <th>Stock</th>
         <th>Último costo</th>
         <th>Costo promedio</th>
@@ -70,7 +71,9 @@
         {% with qty=v.stock.quantity|default:0 min=v.stock.min_alert|default:3 %}
         <tr>
           <td class="d-none d-md-table-cell">
-            {% if v.product.image %}
+            {% if v.image %}
+              <img src="{% media_url v.image %}" alt="{{ v.product.name }}" class="rounded shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
+            {% elif v.product.image %}
               <img src="{% media_url v.product.image %}" alt="{{ v.product.name }}" class="rounded shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
             {% else %}
               <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
@@ -84,6 +87,7 @@
           <td>{{ v.product.brand.name|default:'-' }}</td>
           <td>{{ v.size }}</td>
           <td>{{ v.color }}</td>
+          <td>{{ v.get_gender_display }}</td>
           <td>
             {% if qty <= 0 %}<span class="badge rounded-pill text-bg-danger">Agotado · {{ qty }}</span>
             {% elif qty <= min %}<span class="badge rounded-pill text-bg-warning">Bajo · {{ qty }}</span>

@@ -15,8 +15,7 @@ class Customer(OrganizationScopedModel):
     notes = models.TextField(blank=True)
 
     def __str__(self):
-        name = (getattr(self, 'name', '') or '').strip()
-        return name or f'Customer #{getattr(self, "pk", "")}'
+        return self.name
 
 
 class Loyalty(models.Model):

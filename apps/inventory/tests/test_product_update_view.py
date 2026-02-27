@@ -97,6 +97,16 @@ class ProductUpdateViewTenantTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'precio sugerido no puede ser negativo', status_code=200)
 
+
+    def test_edit_does_not_reapply_initial_stock(self):
+        url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
+
+        response = self.client.post(url, self._payload())
+
+        self.assertEqual(response.status_code, 302)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock.quantity, 3)
+
     def test_add_variant_creates_stock_row(self):
         url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
         payload = self._payload()
