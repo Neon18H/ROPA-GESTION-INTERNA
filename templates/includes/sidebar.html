@@ -12,6 +12,7 @@
 
     <a class="nav-link {% if request.path|slice:':11' == '/inventory/' %}active{% endif %}" href="{% url 'inventory:inventory' %}"><i class="bi bi-box-seam"></i><span>Inventario</span></a>
     <a class="nav-link ps-4 {% if request.path|slice:':20' == '/inventory/products/' %}active{% endif %}" href="{% url 'inventory:products' %}"><i class="bi bi-box"></i><span>Productos</span></a>
+    <a class="nav-link ps-4 {% if request.path|slice:':19' == '/inventory/gallery/' %}active{% endif %}" href="{% url 'inventory:product_gallery' %}"><i class="bi bi-grid-3x3-gap"></i><span>Galería</span></a>
 
     <a class="nav-link {% if request.path|slice:':7' == '/sales/' %}active{% endif %}" href="{% url 'sales:list' %}"><i class="bi bi-cart3"></i><span>Ventas</span></a>
 
