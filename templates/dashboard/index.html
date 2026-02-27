@@ -48,19 +48,28 @@
   <div class="col-12 col-xl-6">
     <div class="card h-100">
       <div class="card-header bg-white border-0"><h5 class="mb-0">Ingresos diarios</h5></div>
-      <div class="card-body"><canvas id="dashboardIncomeChart" height="120"></canvas></div>
+      <div class="card-body">
+        <canvas id="revenueWaveChart" height="120"></canvas>
+        <p id="revenueWaveEmpty" class="small text-muted mb-0 d-none">Sin datos en el rango seleccionado</p>
+      </div>
     </div>
   </div>
   <div class="col-12 col-xl-3">
     <div class="card h-100">
       <div class="card-header bg-white border-0"><h5 class="mb-0">Top vendidos</h5></div>
-      <div class="card-body"><canvas id="dashboardTopProductsChart" height="120"></canvas></div>
+      <div class="card-body">
+        <canvas id="topSoldChart" height="120"></canvas>
+        <p id="topSoldEmpty" class="small text-muted mb-0 d-none">Sin datos en el rango seleccionado</p>
+      </div>
     </div>
   </div>
   <div class="col-12 col-xl-3">
     <div class="card h-100">
       <div class="card-header bg-white border-0"><h5 class="mb-0">Ventas por marca</h5></div>
-      <div class="card-body"><canvas id="dashboardBrandChart" height="120"></canvas></div>
+      <div class="card-body">
+        <canvas id="brandSalesChart" height="120"></canvas>
+        <p id="brandSalesEmpty" class="small text-muted mb-0 d-none">Sin datos en el rango seleccionado</p>
+      </div>
     </div>
   </div>
 </div>
@@ -116,9 +125,119 @@
   </div>
 </div>
 
-{{ chart_payload|json_script:'dashboard-chart-data' }}
+{{ daily_revenue_series|json_script:'dailyRevenueData' }}
+{{ top_sold_series|json_script:'topSoldData' }}
+{{ sales_by_brand_series|json_script:'salesByBrandData' }}
 {% endblock %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'js/charts.js' %}"></script>
+<script>
+  (function () {
+    if (typeof Chart === 'undefined') return;
+
+    const readJson = (id) => {
+      const node = document.getElementById(id);
+      if (!node) return [];
+      try {
+        return JSON.parse(node.textContent || '[]');
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const moneyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--bs-primary').trim() || '#0d6efd';
+
+    const dailyRevenue = readJson('dailyRevenueData');
+    const topSold = readJson('topSoldData');
+    const salesByBrand = readJson('salesByBrandData');
+
+    const waveCanvas = document.getElementById('revenueWaveChart');
+    if (waveCanvas) {
+      if (!dailyRevenue.length) {
+        waveCanvas.classList.add('d-none');
+        document.getElementById('revenueWaveEmpty')?.classList.remove('d-none');
+      } else {
+        const gradient = waveCanvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(13,110,253,0.35)');
+        gradient.addColorStop(1, 'rgba(13,110,253,0.02)');
+        new Chart(waveCanvas, {
+          type: 'line',
+          data: {
+            labels: dailyRevenue.map((item) => item.day),
+            datasets: [{
+              label: 'Ingresos',
+              data: dailyRevenue.map((item) => item.total),
+              borderColor: primaryColor,
+              backgroundColor: gradient,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => moneyFormatter.format(ctx.parsed.y || 0) } },
+            },
+            scales: {
+              y: { ticks: { callback: (value) => moneyFormatter.format(value) } },
+            },
+          },
+        });
+      }
+    }
+
+    const topCanvas = document.getElementById('topSoldChart');
+    if (topCanvas) {
+      if (!topSold.length) {
+        topCanvas.classList.add('d-none');
+        document.getElementById('topSoldEmpty')?.classList.remove('d-none');
+      } else {
+        new Chart(topCanvas, {
+          type: 'bar',
+          data: {
+            labels: topSold.map((item) => item.label),
+            datasets: [{ label: 'Cantidad', data: topSold.map((item) => item.qty), backgroundColor: '#198754' }],
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+          },
+        });
+      }
+    }
+
+    const brandCanvas = document.getElementById('brandSalesChart');
+    if (brandCanvas) {
+      if (!salesByBrand.length) {
+        brandCanvas.classList.add('d-none');
+        document.getElementById('brandSalesEmpty')?.classList.remove('d-none');
+      } else {
+        new Chart(brandCanvas, {
+          type: 'bar',
+          data: {
+            labels: salesByBrand.map((item) => item.label),
+            datasets: [{ label: 'Ventas', data: salesByBrand.map((item) => item.total), backgroundColor: '#6f42c1' }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => moneyFormatter.format(ctx.parsed.y || 0) } },
+            },
+            scales: {
+              y: { ticks: { callback: (value) => moneyFormatter.format(value) } },
+            },
+          },
+        });
+      }
+    }
+  })();
+</script>
 {% endblock %}

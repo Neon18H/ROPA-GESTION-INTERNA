@@ -1,10 +1,15 @@
 import logging
+from datetime import timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import DecimalField, IntegerField, Sum, Value
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 from django.views.generic import TemplateView
 
 from apps.common.mixins import OrganizationRequiredMixin
 from apps.dashboard.services import get_dashboard_data
+from apps.sales.models import Sale, SaleItem
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +38,98 @@ class DashboardView(OrganizationRequiredMixin, TemplateView):
                     'chart_payload': '{"incomeDaily":{"labels":[],"values":[]},"topProducts":{"labels":[],"values":[]},"brandSplit":{"labels":[],"values":[]}}',
                 }
             )
+
+        tz = timezone.get_current_timezone()
+        now = timezone.localtime(timezone.now())
+        start14 = now - timedelta(days=13)
+        start30 = now - timedelta(days=30)
+
+        daily_revenue_series = []
+        top_sold_series = []
+        sales_by_brand_series = []
+
+        if org:
+            daily_rows = (
+                Sale.objects.filter(
+                    organization=org,
+                    status=Sale.Status.PAID,
+                    created_at__gte=start14,
+                    created_at__lte=now,
+                )
+                .annotate(day=TruncDate('created_at', tzinfo=tz))
+                .values('day')
+                .annotate(
+                    total=Coalesce(
+                        Sum('total'),
+                        Value(0),
+                        output_field=DecimalField(max_digits=14, decimal_places=2),
+                    )
+                )
+                .order_by('day')
+            )
+            daily_revenue_series = [
+                {'day': row['day'].isoformat(), 'total': float(row['total'])}
+                for row in daily_rows
+                if row.get('day')
+            ]
+
+            top_sold_rows = (
+                SaleItem.objects.filter(
+                    sale__organization=org,
+                    sale__status=Sale.Status.PAID,
+                    sale__created_at__gte=start30,
+                    sale__created_at__lte=now,
+                )
+                .values('variant__product__sku', 'variant__product__name')
+                .annotate(
+                    total_qty=Coalesce(
+                        Sum('qty'),
+                        Value(0),
+                        output_field=IntegerField(),
+                    )
+                )
+                .order_by('-total_qty')[:5]
+            )
+            top_sold_series = [
+                {
+                    'label': (
+                        f"{row['variant__product__sku']} - {row['variant__product__name']}"
+                        if row.get('variant__product__sku')
+                        else (row.get('variant__product__name') or 'Sin producto')
+                    ),
+                    'qty': int(row['total_qty'] or 0),
+                }
+                for row in top_sold_rows
+            ]
+
+            brand_rows = (
+                SaleItem.objects.filter(
+                    sale__organization=org,
+                    sale__status=Sale.Status.PAID,
+                    sale__created_at__gte=start30,
+                    sale__created_at__lte=now,
+                )
+                .values('variant__product__brand__name')
+                .annotate(
+                    total=Coalesce(
+                        Sum('line_total'),
+                        Value(0),
+                        output_field=DecimalField(max_digits=14, decimal_places=2),
+                    )
+                )
+                .order_by('-total')[:8]
+            )
+            sales_by_brand_series = [
+                {
+                    'label': row.get('variant__product__brand__name') or 'Sin marca',
+                    'total': float(row['total']),
+                }
+                for row in brand_rows
+            ]
+
+        ctx['daily_revenue_series'] = daily_revenue_series
+        ctx['top_sold_series'] = top_sold_series
+        ctx['sales_by_brand_series'] = sales_by_brand_series
 
         ctx['range_options'] = [
             ('today', 'Hoy'),
