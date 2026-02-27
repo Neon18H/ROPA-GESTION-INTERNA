@@ -61,6 +61,7 @@ class ManualVariantForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.organization = organization or getattr(getattr(request, 'user', None), 'organization', None)
         self.fields['supplier'].queryset = Supplier.objects.filter(organization=self.organization, is_active=True).order_by('name')
+        self.fields['supplier'].widget.attrs.update({'id': 'manual_variant_supplier', 'class': 'form-select'})
         self.fields['category'].queryset = Category.objects.filter(organization=self.organization).order_by('name')
         self.fields['brand'].queryset = Brand.objects.filter(organization=self.organization).order_by('name')
 
