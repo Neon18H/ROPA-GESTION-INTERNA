@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load media %}
 {% block content %}
 <div class="card p-3">
   <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Producto</h5><div class="d-flex gap-2"><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:categories' %}">Categorías</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'inventory:brands' %}">Marcas</a></div></div>
@@ -19,7 +20,7 @@
             <div>
               <img
                 id="product-image-preview"
-                src="{{ form.instance.image.url }}"
+                src="{% media_url form.instance.image %}"
                 alt="Imagen del producto"
                 class="rounded border shadow-sm"
                 style="width:90px;height:90px;object-fit:cover;"
@@ -52,7 +53,7 @@
         <label class="form-label d-block">Vista previa</label>
         <div class="card shadow-sm">
           <div class="card-body p-2">
-            <img id="product-image-preview-large" src="{% if form.instance.image %}{{ form.instance.image.url }}{% endif %}" alt="Imagen de producto" class="img-fluid rounded w-100 {% if not form.instance.image %}d-none{% endif %}" style="max-height: 180px; object-fit: cover;">
+            <img id="product-image-preview-large" src="{% if form.instance.image %}{% media_url form.instance.image %}{% endif %}" alt="Imagen de producto" class="img-fluid rounded w-100 {% if not form.instance.image %}d-none{% endif %}" style="max-height: 180px; object-fit: cover;">
             <div id="product-image-empty" class="border rounded bg-light text-muted {% if form.instance.image %}d-none{% else %}d-flex{% endif %} align-items-center justify-content-center" style="height: 180px;">
               <span><i class="bi bi-image me-2"></i>Sin foto</span>
             </div>
@@ -99,7 +100,7 @@
             <td>{{ vform.barcode }}{{ vform.barcode.errors }}</td>
             <td>
               {% if vform.instance.image %}
-                <img src="{{ vform.instance.image.url }}" alt="Imagen variante" class="img-thumbnail mb-1" style="max-height:80px;">
+                <img src="{% media_url vform.instance.image %}" alt="Imagen variante" class="img-thumbnail mb-1" style="max-height:80px;">
                 <div class="form-text">Imagen actual cargada.</div>
               {% endif %}
               {{ vform.image }}
@@ -132,9 +133,9 @@
         <div class="card h-100">
           <div class="card-body">
             {% if variant.image %}
-              <img src="{{ variant.image.url }}" alt="{{ variant }}" class="img-fluid rounded mb-2" style="height:140px;width:100%;object-fit:cover;">
+              <img src="{% media_url variant.image %}" alt="{{ variant }}" class="img-fluid rounded mb-2" style="height:140px;width:100%;object-fit:cover;">
             {% elif form.instance.image %}
-              <img src="{{ form.instance.image.url }}" alt="{{ form.instance.name }}" class="img-fluid rounded mb-2" style="height:140px;width:100%;object-fit:cover;">
+              <img src="{% media_url form.instance.image %}" alt="{{ form.instance.name }}" class="img-fluid rounded mb-2" style="height:140px;width:100%;object-fit:cover;">
             {% else %}
               <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center mb-2" style="height:140px;">
                 <i class="bi bi-image"></i>
