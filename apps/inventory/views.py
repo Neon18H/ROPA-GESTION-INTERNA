@@ -162,6 +162,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
 
         with transaction.atomic():
             form.instance.organization = org
+            form.instance.suggested_price = initial_sale_price
             try:
                 self.object = form.save()
             except ValidationError as exc:
@@ -281,6 +282,7 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
 
     def form_valid(self, form, variant_formset):
         form.instance.organization = self.get_org()
+        form.instance.suggested_price = form.cleaned_data.get('initial_sale_price') or Decimal('0')
 
         try:
             with transaction.atomic():

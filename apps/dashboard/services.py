@@ -4,11 +4,11 @@ from decimal import Decimal
 
 from django.core.cache import cache
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, IntegerField, Sum, Value
-from django.db.models.functions import Coalesce, TruncDate
+from django.db.models.functions import Cast, Coalesce, TruncDate
 from django.utils import timezone
 
 from apps.customers.models import Customer
-from apps.inventory.models import Product, Stock
+from apps.inventory.models import Product, ProductStock, Stock
 from apps.purchases.models import PurchaseItem, PurchaseOrder
 from apps.sales.models import Sale, SaleItem
 from apps.settings_app.models import StoreSettings
@@ -62,16 +62,18 @@ def _safe_store_settings(org):
 
 
 def get_inventory_metrics(org):
-    stock_qs = Stock.objects.filter(variant__product__organization=org).select_related('variant__product')
-    qty_total = stock_qs.aggregate(
-        total=Coalesce(Sum('quantity', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD)
-    )['total']
+    product_stock_qs = ProductStock.objects.filter(organization=org)
+    qty_total = product_stock_qs.aggregate(total=Coalesce(Sum('qty', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD))['total']
 
-    cost_expr = Coalesce(F('avg_cost'), F('last_cost'), F('variant__cost'), ZERO_DEC, output_field=DECIMAL_12_2)
-    inventory_value_expr = ExpressionWrapper(F('quantity') * cost_expr, output_field=DECIMAL_12_2)
-    inventory_value = stock_qs.aggregate(
+    inventory_value_expr = ExpressionWrapper(
+        Cast(F('qty'), output_field=DECIMAL_12_2) * Coalesce(F('product__suggested_price'), ZERO_DEC, output_field=DECIMAL_12_2),
+        output_field=DECIMAL_12_2,
+    )
+    inventory_value = product_stock_qs.aggregate(
         total=Coalesce(Sum(inventory_value_expr, output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2)
     )['total']
+
+    stock_qs = Stock.objects.filter(variant__product__organization=org).select_related('variant__product')
 
     settings = _safe_store_settings(org)
     low_stock_default = settings.low_stock_default if settings else 3
