@@ -26,16 +26,14 @@ class Category(OrganizationScopedModel):
     name = models.CharField(max_length=120)
 
     def __str__(self):
-        name = (getattr(self, 'name', '') or '').strip()
-        return name or f'Category #{getattr(self, "pk", "")}'
+        return self.name
 
 
 class Brand(OrganizationScopedModel):
     name = models.CharField(max_length=120)
 
     def __str__(self):
-        name = (getattr(self, 'name', '') or '').strip()
-        return name or f'Brand #{getattr(self, "pk", "")}'
+        return self.name
 
 
 class Product(OrganizationScopedModel):
@@ -76,17 +74,7 @@ class Variant(models.Model):
     cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
-        product_name = ((getattr(self, 'product', None) and self.product.name) or '').strip()
-        base = product_name or f'Variant #{getattr(self, "pk", "")}'
-
-        extras = []
-        size = (getattr(self, 'size', '') or '').strip()
-        color = (getattr(self, 'color', '') or '').strip()
-        if size:
-            extras.append(size)
-        if color:
-            extras.append(color)
-        return f"{base} - {'/'.join(extras)}" if extras else base
+        return f'{self.product.name} - {self.size}/{self.color}/{self.get_gender_display()}'
 
 
 class Stock(models.Model):

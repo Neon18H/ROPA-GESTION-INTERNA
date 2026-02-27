@@ -100,15 +100,9 @@
             <td>
               {% if vform.instance.image %}
                 <img src="{{ vform.instance.image.url }}" alt="Imagen variante" class="img-thumbnail mb-1" style="max-height:80px;">
+                <div class="form-text">Imagen actual cargada.</div>
               {% endif %}
-              <input
-                type="file"
-                name="{{ vform.image.html_name }}"
-                id="{{ vform.image.id_for_label }}"
-                class="form-control form-control-sm"
-                accept="image/*"
-                capture="environment"
-              >
+              {{ vform.image }}
               <div class="form-text">Desde el celular puedes tomar una foto o subir desde galería.</div>
               {{ vform.image.errors }}
             </td>
@@ -125,6 +119,32 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
+    {% endif %}
+
+
+    {% if variants %}
+    <hr>
+    <h6 class="mb-3">Galería de variantes</h6>
+    <div class="row g-3">
+      {% for variant in variants %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
+          <div class="card-body">
+            {% if variant.image %}
+              <img src="{{ variant.image.url }}" alt="{{ variant }}" class="img-fluid rounded mb-2" style="height:140px;width:100%;object-fit:cover;">
+            {% elif form.instance.image %}
+              <img src="{{ form.instance.image.url }}" alt="{{ form.instance.name }}" class="img-fluid rounded mb-2" style="height:140px;width:100%;object-fit:cover;">
+            {% else %}
+              <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center mb-2" style="height:140px;">
+                <i class="bi bi-image"></i>
+              </div>
+            {% endif %}
+            <div class="small text-muted">{{ variant.size }} · {{ variant.color }} · {{ variant.get_gender_display }}</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% endif %}
 

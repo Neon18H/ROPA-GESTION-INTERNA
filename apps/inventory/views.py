@@ -173,18 +173,18 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 return self.form_invalid(form)
             self._save_variants(self.object, variant_formset, initial_sale_price=initial_sale_price)
 
-            default_variant = self.object.variant_set.order_by('id').first()
-            if initial_qty > 0 and default_variant:
-                create_kardex_movement(
-                    organization=org,
-                    user=self.request.user,
-                    variant=default_variant,
-                    movement_type=KardexEntry.Type.IN,
-                    qty=initial_qty,
-                    unit_cost=initial_cost,
-                    note='Stock inicial al crear producto',
-                    reference=f'product-create:{self.object.id}',
-                )
+            if initial_qty > 0:
+                for variant in self.object.variant_set.order_by('id'):
+                    create_kardex_movement(
+                        organization=org,
+                        user=self.request.user,
+                        variant=variant,
+                        movement_type=KardexEntry.Type.IN,
+                        qty=initial_qty,
+                        unit_cost=initial_cost,
+                        note='Stock inicial al crear producto',
+                        reference=f'product-create:{self.object.id}:variant:{variant.id}',
+                    )
 
         self._safe_success_message('Producto creado')
         return redirect(self.get_success_url())
@@ -244,7 +244,7 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
         org = self.get_org()
         if org is None:
             raise PermissionDenied('No organization associated to current user.')
-        return Product.objects.filter(organization=org)
+        return Product.objects.filter(organization=org).prefetch_related('variant_set')
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -261,6 +261,7 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['variant_formset'] = kwargs.get('variant_formset') or self.get_variant_formset()
+        ctx['variants'] = self.object.variant_set.order_by('id')
         return ctx
 
     def get_success_url(self):

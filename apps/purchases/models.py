@@ -15,8 +15,7 @@ class Supplier(OrganizationScopedModel):
         constraints = [models.UniqueConstraint(fields=['organization', 'name'], name='uq_org_supplier_name')]
 
     def __str__(self):
-        name = (getattr(self, 'name', '') or '').strip()
-        return name or f'Supplier #{getattr(self, "pk", "")}'
+        return self.name
 
 
 class PurchaseOrder(OrganizationScopedModel):
