@@ -218,7 +218,8 @@ class BaseVariantUpdateInlineFormSet(BaseInlineFormSet):
 class VariantUpdateInlineForm(forms.ModelForm):
     class Meta:
         model = Variant
-        fields = ['size', 'color', 'gender', 'barcode', 'image', 'is_active', 'default_sale_price']
+        # Variant uses product image by design; variant-level upload is intentionally disabled.
+        fields = ['size', 'color', 'gender', 'barcode', 'is_active', 'default_sale_price']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -226,10 +227,6 @@ class VariantUpdateInlineForm(forms.ModelForm):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control form-control-sm')
         self.fields['gender'].widget.attrs.setdefault('class', 'form-select form-select-sm')
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
-        self.fields['image'].widget = NoCurrentlyClearableFileInput(attrs={'class': 'form-control form-control-sm', 'accept': 'image/*', 'capture': 'environment'})
-
-    def clean_image(self):
-        return validate_variant_image(self.cleaned_data.get('image'))
 
 
 VariantUpdateFormSet = inlineformset_factory(
@@ -249,7 +246,8 @@ ProductForm = ProductCreateForm
 class VariantForm(forms.ModelForm):
     class Meta:
         model = Variant
-        fields = ['product', 'size', 'color', 'gender', 'barcode', 'image', 'is_active', 'default_sale_price']
+        # Variant uses product image by design; variant-level upload is intentionally disabled.
+        fields = ['product', 'size', 'color', 'gender', 'barcode', 'is_active', 'default_sale_price']
 
     def __init__(self, *args, organization=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -258,10 +256,6 @@ class VariantForm(forms.ModelForm):
             self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
         self.fields['gender'].widget.attrs.setdefault('class', 'form-select')
         self.fields['is_active'].widget.attrs.setdefault('class', 'form-check-input')
-        self.fields['image'].widget = NoCurrentlyClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'})
-
-    def clean_image(self):
-        return validate_variant_image(self.cleaned_data.get('image'))
 
 
 class VariantInlineForm(forms.Form):
@@ -269,7 +263,6 @@ class VariantInlineForm(forms.Form):
     color = forms.CharField(max_length=32, required=False, initial='UNICO', widget=forms.TextInput(attrs={'class': 'form-control'}))
     gender = forms.ChoiceField(required=False, choices=Variant.Gender.choices, initial=Variant.Gender.UNISEX, widget=forms.Select(attrs={'class': 'form-select'}))
     barcode = forms.CharField(max_length=64, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    image = forms.ImageField(required=False, widget=NoCurrentlyClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'capture': 'environment'}))
 
     def clean(self):
         cleaned = super().clean()
@@ -278,10 +271,6 @@ class VariantInlineForm(forms.Form):
             cleaned['color'] = cleaned.get('color') or 'UNICO'
             cleaned['gender'] = cleaned.get('gender') or Variant.Gender.UNISEX
         return cleaned
-
-    def clean_image(self):
-        return validate_variant_image(self.cleaned_data.get('image'))
-
 
 VariantInlineFormSet = formset_factory(VariantInlineForm, extra=1, can_delete=True)
 

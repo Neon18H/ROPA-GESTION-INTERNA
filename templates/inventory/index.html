@@ -71,9 +71,7 @@
         {% with qty=v.product.stock.qty|default:0 min=0 %}
         <tr>
           <td class="d-none d-md-table-cell">
-            {% if v.image %}
-              <img src="{% media_url v.image %}" alt="{{ v.product.name }}" class="rounded shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
-            {% elif v.product.image %}
+            {% if v.product.image %}
               <img src="{% media_url v.product.image %}" alt="{{ v.product.name }}" class="rounded shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
             {% else %}
               <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
