@@ -59,6 +59,14 @@ class ProductUpdateViewTenantTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_edit_form_does_not_render_variant_image_upload(self):
+        url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'variants-0-image')
+
     def test_post_edit_returns_302_for_same_org_product(self):
         url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
 

@@ -8,13 +8,16 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import F, Q
-from django.http import JsonResponse
+from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, FormView, ListView, UpdateView
 
 from apps.common.mixins import RoleRequiredMixin, organization_required, role_required
 from apps.common.models import OrganizationScopedMixin
+from apps.purchases.models import PurchaseItem
+from apps.sales.models import SaleItem
 from apps.settings_app.models import StoreSettings
 from .forms import (
     BrandForm,
@@ -42,7 +45,7 @@ class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
         if org is None:
             raise PermissionDenied('No organization associated to current user.')
         queryset = (
-            Product.objects.filter(organization=org)
+            Product.objects.filter(organization=org, is_active=True)
             .select_related('category', 'brand')
             .annotate(total_stock=F('stock__qty'))
             .order_by('name')
@@ -140,11 +143,13 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         if 'variant_formset' not in ctx:
             initial = [{'size': 'UNICA', 'color': 'UNICO', 'gender': Variant.Gender.UNISEX}]
-            ctx['variant_formset'] = VariantInlineFormSet(self.request.POST or None, self.request.FILES or None, prefix='variants', initial=initial)
+            # Variant uses product image; files are intentionally ignored on variant formset.
+            ctx['variant_formset'] = VariantInlineFormSet(self.request.POST or None, prefix='variants', initial=initial)
         return ctx
 
     def form_valid(self, form):
-        variant_formset = VariantInlineFormSet(self.request.POST, self.request.FILES, prefix='variants')
+        # Variant uses product image; files are intentionally ignored on variant formset.
+        variant_formset = VariantInlineFormSet(self.request.POST, prefix='variants')
         if not variant_formset.is_valid():
             return self.form_invalid(form)
 
@@ -170,7 +175,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
 
     def form_invalid(self, form):
         return self.render_to_response(
-            self.get_context_data(form=form, variant_formset=VariantInlineFormSet(self.request.POST, self.request.FILES, prefix='variants'))
+            self.get_context_data(form=form, variant_formset=VariantInlineFormSet(self.request.POST, prefix='variants'))
         )
 
     def _save_variants(self, product, variant_formset, initial_sale_price=Decimal('0')):
@@ -186,7 +191,6 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 color=entry.get('color') or 'UNICO',
                 gender=entry.get('gender') or Variant.Gender.UNISEX,
                 barcode=entry.get('barcode', ''),
-                image=entry.get('image'),
                 is_active=True,
                 default_sale_price=initial_sale_price,
                 price=initial_sale_price,
@@ -250,7 +254,6 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
         kwargs = {'instance': self.object, 'prefix': 'variants'}
         if self.request.method in ('POST', 'PUT'):
             kwargs['data'] = self.request.POST
-            kwargs['files'] = self.request.FILES
         return VariantUpdateFormSet(**kwargs)
 
     def get_context_data(self, **kwargs):
@@ -394,6 +397,40 @@ class KardexInView(StockInView):
     pass
 
 
+class ProductDeleteView(RoleRequiredMixin, View):
+    allowed_roles = ('ADMIN', 'BODEGA')
+
+    def post(self, request, pk, *args, **kwargs):
+        organization = self.get_org()
+        if organization is None:
+            raise PermissionDenied('No organization associated to current user.')
+
+        product = get_object_or_404(Product, pk=pk, organization=organization)
+
+        has_links = self._has_links(product)
+        if has_links:
+            product.is_active = False
+            product.save(update_fields=['is_active'])
+            messages.info(request, 'El producto tiene movimientos relacionados. Se marcó como inactivo.')
+            return redirect('inventory:products')
+
+        if product.image:
+            product.image.delete(save=False)
+        product.delete()
+        messages.success(request, 'Producto eliminado correctamente.')
+        return redirect('inventory:products')
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponseNotAllowed(['POST'])
+
+    def _has_links(self, product):
+        return (
+            SaleItem.objects.filter(variant__product=product).exists()
+            or PurchaseItem.objects.filter(variant__product=product).exists()
+            or KardexEntry.objects.filter(variant__product=product).exists()
+        )
+
+
 @role_required('ADMIN', 'BODEGA')
 def inventory_view(request):
     org = request.user.organization
@@ -403,7 +440,7 @@ def inventory_view(request):
         ignore_conflicts=True,
     )
 
-    variants = Variant.objects.filter(product__organization=org).select_related('product', 'product__category', 'product__brand', 'product__stock')
+    variants = Variant.objects.filter(product__organization=org, product__is_active=True).select_related('product', 'product__category', 'product__brand', 'product__stock')
 
     category_id = request.GET.get('category')
     brand_id = request.GET.get('brand')

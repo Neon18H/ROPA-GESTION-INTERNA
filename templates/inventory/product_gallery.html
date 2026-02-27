@@ -48,9 +48,7 @@
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body">
           <div class="ratio ratio-1x1 bg-light rounded overflow-hidden mb-3">
-            {% if variant.image %}
-              <img src="{% media_url variant.image %}" alt="{{ variant.product.name }}" class="w-100 h-100 object-fit-cover">
-            {% elif variant.product.image %}
+            {% if variant.product.image %}
               <img src="{% media_url variant.product.image %}" alt="{{ variant.product.name }}" class="w-100 h-100 object-fit-cover">
             {% else %}
               <div class="d-flex flex-column align-items-center justify-content-center text-muted">
