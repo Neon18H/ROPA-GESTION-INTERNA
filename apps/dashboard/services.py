@@ -3,7 +3,7 @@ from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
-from django.db.models import Count, DecimalField, F, IntegerField, Sum, Value
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, IntegerField, Sum, Value
 from django.db.models.functions import Cast, Coalesce, TruncDate
 from django.utils import timezone
 
@@ -63,20 +63,16 @@ def _safe_store_settings(org):
 
 def get_inventory_metrics(org):
     stock_qs = Stock.objects.filter(variant__product__organization=org).select_related('variant__product')
-    qty_total = stock_qs.aggregate(
-        total=Coalesce(Sum('quantity', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD)
-    )['total']
+    qty_total = stock_qs.aggregate(total=Coalesce(Sum('quantity'), 0))['total']
 
     dec_18_2 = DecimalField(max_digits=18, decimal_places=2)
-    stock_dec = Cast(F('quantity'), output_field=dec_18_2)
-    price_dec = Coalesce(
-        F('variant__default_sale_price'),
-        F('variant__product__suggested_price'),
-        Value(Decimal('0.00')),
+    value_expr = ExpressionWrapper(
+        Cast(F('quantity'), output_field=dec_18_2)
+        * Coalesce(F('variant__product__suggested_price'), Value(Decimal('0.00'))),
         output_field=dec_18_2,
     )
     inventory_value = stock_qs.aggregate(
-        total=Coalesce(Sum(stock_dec * price_dec, output_field=dec_18_2), Value(Decimal('0.00')), output_field=dec_18_2)
+        total=Coalesce(Sum(value_expr), Value(Decimal('0.00')), output_field=dec_18_2)
     )['total']
 
     settings = _safe_store_settings(org)

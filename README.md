@@ -103,3 +103,7 @@ Si responde `text/html` o `404`, el proceso web no está ejecutando `collectstat
 1. Inicia sesión con un usuario de la organización y entra a **Settings > Facturación** (`/settings/billing/`).
 2. Completa datos legales, correo y **IVA global (%)**; guarda los cambios.
 3. Al abrir una factura de venta (`/sales/<id>/receipt/`), el sistema mostrará esos datos y calculará impuestos por línea usando el IVA del ítem (si existe) o el IVA global configurado.
+
+
+## Nota interna: cálculo de stock y valorización
+En dashboard, el **Stock total** se calcula únicamente desde `inventory.Stock.quantity` sumando todas las variantes activas por organización (`variant__product__organization`), y el **Inventario valorizado** se calcula como `SUM(stock_por_variante * Product.suggested_price)` usando expresiones decimales para evitar errores de tipos en base de datos. `ProductStock` se mantiene para compatibilidad operativa, pero no es la fuente de verdad para esas métricas del dashboard.

@@ -8,7 +8,7 @@ from apps.inventory.models import Product, ProductStock, Stock, Variant
 
 
 class InventoryMetricsTests(TestCase):
-    def test_uses_variant_stock_and_prefers_variant_sale_price(self):
+    def test_uses_variant_stock_and_product_suggested_price(self):
         org = Organization.objects.create(name='Org A')
         other_org = Organization.objects.create(name='Org B')
 
@@ -27,12 +27,7 @@ class InventoryMetricsTests(TestCase):
 
         variant_a1 = Variant.objects.create(product=product_a, size='M', color='Negro')
         variant_a2 = Variant.objects.create(product=product_a, size='L', color='Negro')
-        variant_b1 = Variant.objects.create(
-            product=product_b,
-            size='U',
-            color='Azul',
-            default_sale_price=Decimal('80.00'),
-        )
+        variant_b1 = Variant.objects.create(product=product_b, size='U', color='Azul')
         Stock.objects.create(variant=variant_a1, quantity=7, min_alert=3)
         Stock.objects.create(variant=variant_a2, quantity=5, min_alert=3)
         Stock.objects.create(variant=variant_b1, quantity=12, min_alert=3)
@@ -40,4 +35,4 @@ class InventoryMetricsTests(TestCase):
         metrics = get_inventory_metrics(org)
 
         self.assertEqual(metrics['stock_total'], 24)
-        self.assertEqual(metrics['inventory_value'], Decimal('1560.00'))
+        self.assertEqual(metrics['inventory_value'], Decimal('1800.00'))

@@ -29,10 +29,16 @@ from .forms import (
     VariantInlineFormSet,
     VariantUpdateFormSet,
 )
-from .models import Brand, Category, KardexEntry, Product, ProductStock, Variant
+from .models import Brand, Category, KardexEntry, Product, ProductStock, Stock, Variant
 
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_variant_stock_rows(product, initial_qty=None):
+    qty = initial_qty if initial_qty is not None else 0
+    for variant in product.variant_set.all():
+        Stock.objects.get_or_create(variant=variant, defaults={'quantity': qty})
 
 
 class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
@@ -170,6 +176,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 return self.form_invalid(form)
             self._save_variants(self.object, variant_formset, initial_sale_price=initial_sale_price)
             self._ensure_initial_stock(self.object, org, initial_qty=initial_qty, initial_cost=initial_cost)
+            ensure_variant_stock_rows(self.object, initial_qty=initial_qty)
 
         self._safe_success_message('Producto creado')
         return redirect(self.get_success_url())
@@ -312,6 +319,8 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
                             default_variant.price = initial_sale_price
                         default_variant.save(update_fields=['default_sale_price', 'price'])
 
+                ensure_variant_stock_rows(self.object, initial_qty=form.cleaned_data.get('initial_qty'))
+
         except IntegrityError as exc:
             error_msg = str(exc)
             if 'uq_org_sku' in error_msg:
@@ -335,7 +344,6 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
             messages.success(self.request, message)
         except Exception:
             logger.exception('No se pudo publicar mensaje de éxito en ProductUpdateView.')
-
 
 class StockInView(RoleRequiredMixin, FormView):
     template_name = 'inventory/stock_in.html'
