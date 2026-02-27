@@ -8,54 +8,117 @@
 <li class="breadcrumb-item active">Dashboard</li>
 {% endblock %}
 {% block content %}
-<div class="row g-3 mb-4">
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas hoy (monto)</small><h3>{{ sales_today_total|default:0|money }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Ventas mes (monto)</small><h3>{{ sales_month_total|default:0|money }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Inventario valorizado</small><h3>{{ inventory_value|default:0|money }}</h3></div></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card glass-card kpi-card"><div class="card-body"><small>Margen estimado</small><h3>{{ estimated_margin|default:0|money }}</h3></div></div></div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2 class="h4 mb-1">Buenas tardes, {{ request.user.first_name|default:request.user.username }}</h2>
+    <p class="text-muted mb-0">Resumen operativo y comercial de tu organización.</p>
+  </div>
+  <form method="get" class="d-flex align-items-center gap-2">
+    <label for="range" class="small text-muted mb-0">Rango</label>
+    <select id="range" name="range" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for key, label in range_options %}
+        <option value="{{ key }}" {% if selected_range == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-xl-8">
-    <div class="card glass-card h-100">
-      <div class="card-header border-0"><h3 class="card-title mb-0">Ventas últimos 30 días</h3></div>
-      <div class="card-body"><canvas id="salesLineChart" height="120"></canvas></div>
+  {% for card in cards %}
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <p class="metric-title">{{ card.title }}</p>
+          <h3 class="metric-value">
+            {% if card.is_money %}{{ card.value|money }}{% elif card.is_percentage %}{{ card.value|floatformat:1 }}%{% else %}{{ card.value|default:0 }}{% endif %}
+          </h3>
+          <div class="d-flex align-items-center justify-content-between mt-2">
+            <span class="badge {% if card.delta < 0 %}text-bg-danger{% elif card.delta > 0 %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+              {{ card.delta|floatformat:1 }}%
+            </span>
+            <div class="sparkline-placeholder"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-6">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0"><h5 class="mb-0">Ingresos diarios</h5></div>
+      <div class="card-body"><canvas id="dashboardIncomeChart" height="120"></canvas></div>
     </div>
   </div>
-  <div class="col-xl-4">
-    <div class="card glass-card h-100">
-      <div class="card-header border-0"><h3 class="card-title mb-0">Top clientes (gráfico)</h3></div>
-      <div class="card-body"><canvas id="topCustomersChart" height="120"></canvas></div>
+  <div class="col-12 col-xl-3">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0"><h5 class="mb-0">Top vendidos</h5></div>
+      <div class="card-body"><canvas id="dashboardTopProductsChart" height="120"></canvas></div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-3">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0"><h5 class="mb-0">Ventas por marca</h5></div>
+      <div class="card-body"><canvas id="dashboardBrandChart" height="120"></canvas></div>
     </div>
   </div>
 </div>
 
 <div class="row g-3">
-  <div class="col-12">
-    <div class="card glass-card">
-      <div class="card-header border-0"><h3 class="card-title mb-0">Top clientes</h3></div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0 data-table-saas">
-            <thead><tr><th>Cliente</th><th>Pedidos</th><th>Total gastado</th></tr></thead>
-            <tbody>
-              {% for c in top_customers %}
-                <tr><td>{{ c.customer__name|default:'Sin cliente' }}</td><td>{{ c.orders }}</td><td>{{ c.total_spent|money }}</td></tr>
-              {% empty %}
-                <tr><td colspan="3" class="text-center py-4">No hay ventas todavía.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0"><h5 class="mb-0">Top productos</h5></div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead><tr><th>Producto</th><th class="text-end">Unidades</th></tr></thead>
+          <tbody>
+            {% for row in top_products %}
+              <tr><td>{{ row.variant__product__name|default:'Sin producto' }}</td><td class="text-end"><span class="badge text-bg-primary">{{ row.total_qty }}</span></td></tr>
+            {% empty %}<tr><td colspan="2" class="text-center text-muted py-4">Sin ventas en el periodo.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0"><h5 class="mb-0">Top clientes</h5></div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead><tr><th>Cliente</th><th class="text-end">Gasto</th></tr></thead>
+          <tbody>
+            {% for row in top_customers %}
+              <tr>
+                <td><span class="avatar-initial me-2">{{ row.customer__name|default:'S'|slice:':1'|upper }}</span>{{ row.customer__name|default:'Sin cliente' }}</td>
+                <td class="text-end">{{ row.total_spent|money }}</td>
+              </tr>
+            {% empty %}<tr><td colspan="2" class="text-center text-muted py-4">Sin clientes para mostrar.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header bg-white border-0"><h5 class="mb-0">Bajo stock</h5></div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead><tr><th>Producto</th><th class="text-end">Stock</th></tr></thead>
+          <tbody>
+            {% for stock in low_stock_products %}
+              <tr><td>{{ stock.variant.product.name }}</td><td class="text-end"><span class="badge text-bg-warning">{{ stock.quantity }}</span></td></tr>
+            {% empty %}<tr><td colspan="2" class="text-center text-muted py-4">No hay alertas.</td></tr>{% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </div>
 
-{{ sales_line_data|json_script:'sales-line-data' }}
-{{ top_customers_chart_data|json_script:'top-customers-chart-data' }}
+{{ chart_payload|json_script:'dashboard-chart-data' }}
 {% endblock %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/charts.js' %}"></script>
 {% endblock %}

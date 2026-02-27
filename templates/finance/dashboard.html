@@ -1,25 +1,58 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load money %}
-{% block page_title %}Finanzas{% endblock %}
+{% block title %}Finanzas · ERP Cloud{% endblock %}
+{% block page_title %}Dashboard Financiero{% endblock %}
 {% block breadcrumbs %}<li class="breadcrumb-item active">Finanzas</li>{% endblock %}
 {% block content %}
-<div class="row g-3 mb-3">
-  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Ingresos hoy</small><h4>{{ ingresos_hoy|money }}</h4></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Ingresos mes</small><h4>{{ ingresos_mes|money }}</h4></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Gastos operativos mes</small><h4>{{ gastos_operativos_mes|money }}</h4></div></div>
-  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Margen estimado mes</small><h4>{{ margen_estimado_mes|money }}</h4></div></div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <h2 class="h4 mb-1">Panel financiero</h2>
+    <p class="text-muted mb-0">Control de ingresos, gastos y utilidad estimada.</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <label for="range" class="small text-muted mb-0">Rango</label>
+      <select id="range" name="range" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for key, label in range_options %}
+          <option value="{{ key }}" {% if selected_range == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'finance:export_sales_csv' %}?range={{ selected_range }}">Exportar ventas CSV</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'finance:export_purchases_csv' %}?range={{ selected_range }}">Exportar compras CSV</a>
+  </div>
 </div>
-<div class="card p-3 mb-3"><strong>Inventario valorizado:</strong> {{ inventario_valorizado|money }}</div>
+
+<div class="row g-3 mb-4">
+  {% for card in cards %}
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card metric-card h-100"><div class="card-body">
+        <p class="metric-title">{{ card.title }}</p>
+        <h3 class="metric-value">
+          {% if card.is_money %}{{ card.value|money }}{% elif card.is_percentage %}{{ card.value|floatformat:1 }}%{% else %}{{ card.value|default:0 }}{% endif %}
+        </h3>
+      </div></div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-6"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Ingresos vs gastos</h5></div><div class="card-body"><canvas id="financeIncomeExpenseChart" height="120"></canvas></div></div></div>
+  <div class="col-12 col-xl-3"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Utilidad por semana</h5></div><div class="card-body"><canvas id="financeProfitWeekChart" height="120"></canvas></div></div></div>
+  <div class="col-12 col-xl-3"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Gasto por proveedor</h5></div><div class="card-body"><canvas id="financeSupplierChart" height="120"></canvas></div></div></div>
+</div>
+
 <div class="row g-3">
-  <div class="col-lg-6"><div class="card p-3"><h6>Ventas últimos 30 días</h6><canvas id="salesChart" height="120"></canvas></div></div>
-  <div class="col-lg-6"><div class="card p-3"><h6>Top 5 productos por ingresos</h6><canvas id="topProductsChart" height="120"></canvas></div></div>
+  <div class="col-12 col-xl-3"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Más vendidos</h5></div><div class="table-responsive"><table class="table table-sm mb-0"><tbody>{% for row in top_selling_products %}<tr><td>{{ row.variant__product__name|default:'Sin producto' }}</td><td class="text-end"><span class="badge text-bg-success">{{ row.total_qty }}</span></td></tr>{% empty %}<tr><td class="text-center text-muted py-4">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-12 col-xl-3"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Sin ventas (90d)</h5></div><div class="table-responsive"><table class="table table-sm mb-0"><tbody>{% for product in unsold_products %}<tr><td>{{ product.name }}</td><td class="text-end"><span class="badge text-bg-warning">{{ product.sku }}</span></td></tr>{% empty %}<tr><td class="text-center text-muted py-4">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-12 col-xl-3"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Más comprados</h5></div><div class="table-responsive"><table class="table table-sm mb-0"><tbody>{% for row in top_purchased_products %}<tr><td>{{ row.variant__product__name|default:'Sin producto' }}</td><td class="text-end">{{ row.total_qty }}</td></tr>{% empty %}<tr><td class="text-center text-muted py-4">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-12 col-xl-3"><div class="card h-100"><div class="card-header bg-white border-0"><h5 class="mb-0">Top proveedores</h5></div><div class="table-responsive"><table class="table table-sm mb-0"><tbody>{% for row in top_suppliers %}<tr><td>{{ row.supplier__name|default:'Sin proveedor' }}</td><td class="text-end">{{ row.total|money }}</td></tr>{% empty %}<tr><td class="text-center text-muted py-4">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
 </div>
-{{ chart_sales_labels|json_script:"chart-sales-labels" }}
-{{ chart_sales_values|json_script:"chart-sales-values" }}
-{{ chart_top_labels|json_script:"chart-top-labels" }}
-{{ chart_top_values|json_script:"chart-top-values" }}
-{{ chart_expense_labels|json_script:"chart-expense-labels" }}
-{{ chart_expense_values|json_script:"chart-expense-values" }}
+
+{{ chart_payload|json_script:'finance-chart-data' }}
 {% endblock %}
-{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="{% static 'js/finance_dashboard.js' %}"></script>{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/charts.js' %}"></script>
+{% endblock %}

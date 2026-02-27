@@ -124,3 +124,39 @@ body.app-body { background: var(--bg); color: var(--text); }
   .app-main { overflow: visible; }
   .org-badge { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
 }
+
+.metric-card {
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+.metric-title {
+  margin-bottom: .4rem;
+  color: #64748b;
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.metric-value {
+  margin-bottom: 0;
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.sparkline-placeholder {
+  width: 52px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #60a5fa, #1d4ed8);
+}
+.avatar-initial {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: .75rem;
+  font-weight: 700;
+}
