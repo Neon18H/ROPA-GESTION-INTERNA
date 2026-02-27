@@ -40,8 +40,13 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Nueva Variante para Compra</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
+        <form id="manualVariantForm">
         <div class="row g-2">
-          <div class="col-md-6"><label class="form-label">Proveedor</label><input class="form-control" id="manualSupplierName" readonly><input type="hidden" id="manualSupplier"></div>
+          <div class="col-md-6">
+            <label class="form-label" for="{{ manual_variant_form.supplier.id_for_label }}">{{ manual_variant_form.supplier.label }}</label>
+            {{ manual_variant_form.supplier.as_widget(attrs={'id': 'manual_variant_supplier', 'class': 'form-select'}) }}
+            <div id="manualSupplierError" class="invalid-feedback"></div>
+          </div>
           <div class="col-md-6"><label class="form-label">SKU Producto</label><input class="form-control" id="manualSku"></div>
           <div class="col-md-6"><label class="form-label">Nombre Producto</label><input class="form-control" id="manualProductName"></div>
           <div class="col-md-3"><label class="form-label">Categoría</label><select class="form-select" id="manualCategory"><option value="">---------</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
@@ -56,6 +61,7 @@
         <datalist id="sizes-list">{% for s in sizes %}<option value="{{ s }}">{% endfor %}</datalist>
         <datalist id="colors-list">{% for c in colors %}<option value="{{ c }}">{% endfor %}</datalist>
         <div id="manualVariantError" class="text-danger small mt-2"></div>
+        </form>
       </div>
       <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary btn-sm" id="saveManualVariant">Guardar variante</button></div>
     </div>
@@ -68,7 +74,6 @@
   const totalForms = document.getElementById('id_items-TOTAL_FORMS');
   const addBtn = document.getElementById('addRow');
   const tbody = document.querySelector('#purchaseItems tbody');
-  const supplierSelect = document.getElementById('id_supplier');
   const firstRow = tbody.querySelector('tr');
 
   function cloneRow(index){
@@ -100,11 +105,17 @@
   });
 
   const manualModal = document.getElementById('manualVariantModal');
+  const purchaseSupplierSelect = document.getElementById('id_supplier');
+  const manualSupplierSelect = document.getElementById('manual_variant_supplier');
+  const manualSupplierError = document.getElementById('manualSupplierError');
+
   manualModal.addEventListener('show.bs.modal', function(){
-    const option = supplierSelect.options[supplierSelect.selectedIndex];
-    document.getElementById('manualSupplier').value = supplierSelect.value;
-    document.getElementById('manualSupplierName').value = option ? option.text : '';
+    if (purchaseSupplierSelect && purchaseSupplierSelect.value) {
+      manualSupplierSelect.value = purchaseSupplierSelect.value;
+    }
     document.getElementById('manualVariantError').textContent = '';
+    manualSupplierError.textContent = '';
+    manualSupplierSelect.classList.remove('is-invalid');
   });
 
   document.getElementById('saveManualVariant').addEventListener('click', function(){
@@ -112,7 +123,7 @@
     error.textContent = '';
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     const data = new URLSearchParams({
-      supplier: document.getElementById('manualSupplier').value,
+      supplier: manualSupplierSelect.value,
       sku: document.getElementById('manualSku').value,
       product_name: document.getElementById('manualProductName').value,
       category: document.getElementById('manualCategory').value,
@@ -131,7 +142,11 @@
     }).then(async (response) => {
       const payload = await response.json();
       if (!response.ok) {
-        error.textContent = payload.error || JSON.stringify(payload.errors || payload);
+        if (payload.errors && payload.errors.supplier) {
+          manualSupplierError.textContent = payload.errors.supplier.join(' ');
+          manualSupplierSelect.classList.add('is-invalid');
+        }
+        error.textContent = payload.error || (payload.errors ? 'Revisa los campos del formulario.' : JSON.stringify(payload));
         return;
       }
       const index = parseInt(totalForms.value, 10);

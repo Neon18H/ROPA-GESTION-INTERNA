@@ -44,7 +44,7 @@ class PurchaseItemForm(forms.Form):
 
 
 class ManualVariantForm(forms.Form):
-    supplier = forms.ModelChoiceField(queryset=Supplier.objects.none())
+    supplier = forms.ModelChoiceField(queryset=Supplier.objects.none(), widget=forms.Select(attrs={'class': 'form-select'}))
     sku = forms.CharField(max_length=64)
     product_name = forms.CharField(max_length=180)
     category = forms.ModelChoiceField(queryset=Category.objects.none(), required=False)
@@ -57,11 +57,17 @@ class ManualVariantForm(forms.Form):
     qty = forms.IntegerField(min_value=1)
 
     def __init__(self, *args, organization=None, **kwargs):
+        request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
-        self.organization = organization
-        self.fields['supplier'].queryset = Supplier.objects.filter(organization=organization, is_active=True).order_by('name')
-        self.fields['category'].queryset = Category.objects.filter(organization=organization).order_by('name')
-        self.fields['brand'].queryset = Brand.objects.filter(organization=organization).order_by('name')
+        self.organization = organization or getattr(getattr(request, 'user', None), 'organization', None)
+        self.fields['supplier'].queryset = Supplier.objects.filter(organization=self.organization, is_active=True).order_by('name')
+        self.fields['category'].queryset = Category.objects.filter(organization=self.organization).order_by('name')
+        self.fields['brand'].queryset = Brand.objects.filter(organization=self.organization).order_by('name')
+
+        for field_name in ('sku', 'product_name', 'size', 'color', 'barcode', 'unit_cost', 'qty'):
+            self.fields[field_name].widget.attrs.setdefault('class', 'form-control')
+        for field_name in ('category', 'brand', 'gender'):
+            self.fields[field_name].widget.attrs.setdefault('class', 'form-select')
 
     def clean_sku(self):
         return (self.cleaned_data.get('sku') or '').strip()
