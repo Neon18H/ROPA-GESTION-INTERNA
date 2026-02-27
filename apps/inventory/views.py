@@ -7,8 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, models, transaction
-from django.db.models import F, IntegerField, Min, Prefetch, Q, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import F, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -28,7 +27,6 @@ from .forms import (
     VariantUpdateFormSet,
 )
 from .models import Brand, Category, KardexEntry, Product, Stock, Variant
-from .services import create_kardex_movement
 
 
 logger = logging.getLogger(__name__)
@@ -64,9 +62,9 @@ class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
 
 
 class ProductGalleryView(RoleRequiredMixin, ListView):
-    model = Product
+    model = Variant
     template_name = 'inventory/product_gallery.html'
-    context_object_name = 'products'
+    context_object_name = 'variants'
     allowed_roles = ('ADMIN', 'BODEGA')
 
     def get_queryset(self):
@@ -75,23 +73,9 @@ class ProductGalleryView(RoleRequiredMixin, ListView):
             raise PermissionDenied('No organization associated to current user.')
 
         queryset = (
-            Product.objects.filter(organization=org, is_active=True)
-            .select_related('category', 'brand')
-            .prefetch_related(Prefetch('variant_set', queryset=Variant.objects.filter(is_active=True).select_related('stock')))
-            .annotate(
-                stock_total=Coalesce(
-                    Sum('variant__stock__quantity', filter=Q(variant__is_active=True)),
-                    Value(0),
-                    output_field=IntegerField(),
-                ),
-                min_alert=Coalesce(
-                    Min('variant__stock__min_alert', filter=Q(variant__is_active=True)),
-                    Value(self._low_stock_default()),
-                    output_field=IntegerField(),
-                ),
-                first_variant_id=Min('variant__id', filter=Q(variant__is_active=True)),
-            )
-            .order_by('name')
+            Variant.objects.filter(product__organization=org, product__is_active=True, is_active=True)
+            .select_related('product', 'product__category', 'product__brand', 'stock')
+            .order_by('product__name', 'id')
         )
 
         category_id = self.request.GET.get('category')
@@ -99,11 +83,18 @@ class ProductGalleryView(RoleRequiredMixin, ListView):
         query = (self.request.GET.get('q') or '').strip()
 
         if category_id:
-            queryset = queryset.filter(category_id=category_id)
+            queryset = queryset.filter(product__category_id=category_id)
         if brand_id:
-            queryset = queryset.filter(brand_id=brand_id)
+            queryset = queryset.filter(product__brand_id=brand_id)
         if query:
-            queryset = queryset.filter(Q(name__icontains=query) | Q(sku__icontains=query))
+            queryset = queryset.filter(
+                Q(product__name__icontains=query)
+                | Q(product__sku__icontains=query)
+                | Q(size__icontains=query)
+                | Q(color__icontains=query)
+                | Q(gender__icontains=query)
+                | Q(barcode__icontains=query)
+            )
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -172,19 +163,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 form.add_error(None, exc)
                 return self.form_invalid(form)
             self._save_variants(self.object, variant_formset, initial_sale_price=initial_sale_price)
-
-            if initial_qty > 0:
-                for variant in self.object.variant_set.order_by('id'):
-                    create_kardex_movement(
-                        organization=org,
-                        user=self.request.user,
-                        variant=variant,
-                        movement_type=KardexEntry.Type.IN,
-                        qty=initial_qty,
-                        unit_cost=initial_cost,
-                        note='Stock inicial al crear producto',
-                        reference=f'product-create:{self.object.id}:variant:{variant.id}',
-                    )
+            self._ensure_initial_stock(self.object, org, initial_qty=initial_qty, initial_cost=initial_cost)
 
         self._safe_success_message('Producto creado')
         return redirect(self.get_success_url())
@@ -212,7 +191,6 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 default_sale_price=initial_sale_price,
                 price=initial_sale_price,
             )
-            Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
             created += 1
 
         if created == 0:
@@ -225,7 +203,32 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
                 default_sale_price=initial_sale_price,
                 price=initial_sale_price,
             )
-            Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0})
+
+    def _ensure_initial_stock(self, product, organization, initial_qty=0, initial_cost=Decimal('0')):
+        variants = Variant.objects.filter(product=product, product__organization=organization)
+        for variant in variants:
+            stock, created = Stock.objects.get_or_create(
+                variant=variant,
+                defaults={
+                    'quantity': initial_qty,
+                    'avg_cost': initial_cost,
+                    'last_cost': initial_cost,
+                },
+            )
+
+            needs_save = False
+            if not created and stock.quantity == 0 and initial_qty > 0:
+                stock.quantity = initial_qty
+                needs_save = True
+            if (stock.avg_cost or 0) == 0 and initial_cost > 0:
+                stock.avg_cost = initial_cost
+                stock.last_cost = initial_cost
+                needs_save = True
+
+            if needs_save:
+                stock.save(update_fields=['quantity', 'avg_cost', 'last_cost'])
+
+
 
     def _safe_success_message(self, message):
         try:
