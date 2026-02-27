@@ -68,7 +68,7 @@
       </thead>
       <tbody>
       {% for v in variants %}
-        {% with qty=v.product.stock.qty|default:0 min=0 %}
+        {% with qty=v.stock_qty_value|default:0 min=0 %}
         <tr>
           <td class="d-none d-md-table-cell">
             {% if v.product.image %}
