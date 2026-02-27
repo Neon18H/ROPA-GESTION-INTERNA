@@ -6,8 +6,8 @@ from io import TextIOWrapper
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import IntegrityError, models, transaction
-from django.db.models import F, Q, Sum
+from django.db import IntegrityError, transaction
+from django.db.models import F, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -26,7 +26,7 @@ from .forms import (
     VariantInlineFormSet,
     VariantUpdateFormSet,
 )
-from .models import Brand, Category, KardexEntry, Product, Stock, Variant
+from .models import Brand, Category, KardexEntry, Product, ProductStock, Variant
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
         queryset = (
             Product.objects.filter(organization=org)
             .select_related('category', 'brand')
-            .annotate(total_stock=Sum('variant__stock__quantity'))
+            .annotate(total_stock=F('stock__qty'))
             .order_by('name')
         )
 
@@ -74,7 +74,7 @@ class ProductGalleryView(RoleRequiredMixin, ListView):
 
         queryset = (
             Variant.objects.filter(product__organization=org, product__is_active=True, is_active=True)
-            .select_related('product', 'product__category', 'product__brand', 'stock')
+            .select_related('product', 'product__category', 'product__brand', 'product__stock')
             .order_by('product__name', 'id')
         )
 
@@ -205,28 +205,20 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
             )
 
     def _ensure_initial_stock(self, product, organization, initial_qty=0, initial_cost=Decimal('0')):
-        variants = Variant.objects.filter(product=product, product__organization=organization)
-        for variant in variants:
-            stock, created = Stock.objects.get_or_create(
-                variant=variant,
-                defaults={
-                    'quantity': initial_qty,
-                    'avg_cost': initial_cost,
-                    'last_cost': initial_cost,
-                },
-            )
-
-            needs_save = False
-            if not created and stock.quantity == 0 and initial_qty > 0:
-                stock.quantity = initial_qty
-                needs_save = True
-            if (stock.avg_cost or 0) == 0 and initial_cost > 0:
-                stock.avg_cost = initial_cost
-                stock.last_cost = initial_cost
-                needs_save = True
-
-            if needs_save:
-                stock.save(update_fields=['quantity', 'avg_cost', 'last_cost'])
+        stock, created = ProductStock.objects.get_or_create(
+            organization=organization,
+            product=product,
+            defaults={
+                'qty': initial_qty,
+                'avg_cost': initial_cost,
+                'last_cost': initial_cost,
+            },
+        )
+        if not created:
+            stock.qty = initial_qty
+            stock.avg_cost = initial_cost
+            stock.last_cost = initial_cost
+            stock.save(update_fields=['qty', 'avg_cost', 'last_cost'])
 
 
 
@@ -304,8 +296,6 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
                     if variant.price in (None, 0):
                         variant.price = variant.default_sale_price or 0
                     variant.save()
-                    Stock.objects.get_or_create(variant=variant, defaults={'quantity': 0, 'min_alert': 0})
-
                 variant_formset.save_m2m()
 
                 initial_sale_price = form.cleaned_data.get('initial_sale_price')
@@ -381,16 +371,20 @@ class StockInView(RoleRequiredMixin, FormView):
                 created_by=self.request.user,
             )
 
-            stock, _ = Stock.objects.get_or_create(variant=entry.variant, defaults={'quantity': 0})
-            previous_qty = stock.quantity
-            stock.quantity = previous_qty + qty
+            stock, _ = ProductStock.objects.get_or_create(
+                organization=org,
+                product=entry.variant.product,
+                defaults={'qty': 0},
+            )
+            previous_qty = stock.qty
+            stock.qty = previous_qty + qty
             if unit_cost is not None:
                 stock.last_cost = unit_cost
                 total_prev = Decimal(previous_qty) * stock.avg_cost
                 total_in = Decimal(qty) * unit_cost
                 denominator = previous_qty + qty
                 stock.avg_cost = ((total_prev + total_in) / Decimal(denominator)) if denominator > 0 else unit_cost
-            stock.save(update_fields=['quantity', 'last_cost', 'avg_cost'])
+            stock.save(update_fields=['qty', 'last_cost', 'avg_cost'])
 
         messages.success(self.request, 'Ingreso registrado correctamente.')
         return redirect('/inventory/')
@@ -403,10 +397,13 @@ class KardexInView(StockInView):
 @role_required('ADMIN', 'BODEGA')
 def inventory_view(request):
     org = request.user.organization
-    variants_without_stock = Variant.objects.filter(product__organization=org, stock__isnull=True).values_list('id', flat=True)
-    Stock.objects.bulk_create([Stock(variant_id=variant_id, quantity=0) for variant_id in variants_without_stock], ignore_conflicts=True)
+    products_without_stock = Product.objects.filter(organization=org, stock__isnull=True).values_list('id', flat=True)
+    ProductStock.objects.bulk_create(
+        [ProductStock(product_id=product_id, organization=org, qty=0) for product_id in products_without_stock],
+        ignore_conflicts=True,
+    )
 
-    variants = Variant.objects.filter(product__organization=org).select_related('product', 'product__category', 'product__brand', 'stock')
+    variants = Variant.objects.filter(product__organization=org).select_related('product', 'product__category', 'product__brand', 'product__stock')
 
     category_id = request.GET.get('category')
     brand_id = request.GET.get('brand')
@@ -417,16 +414,14 @@ def inventory_view(request):
     if brand_id:
         variants = variants.filter(product__brand_id=brand_id)
     if low_stock:
-        variants = variants.filter(Q(stock__quantity__lte=F('stock__min_alert')) | Q(stock__quantity__isnull=True))
+        variants = variants.filter(Q(product__stock__qty__lte=0) | Q(product__stock__isnull=True))
 
     context = {
         'variants': variants.order_by('product__name', 'size', 'color'),
         'categories': Category.objects.filter(organization=org),
         'brands': Brand.objects.filter(organization=org),
         'movement_form': StockMovementForm(organization=org),
-        'low_stock_count': Stock.objects.filter(
-            variant__product__organization=org, quantity__lte=models.F('min_alert')
-        ).count(),
+        'low_stock_count': ProductStock.objects.filter(organization=org, qty__lte=0).count(),
         'kardex_entries': KardexEntry.objects.filter(organization=org).select_related('variant__product').order_by('-created_at')[:10],
         'selected_category': category_id,
         'selected_brand': brand_id,

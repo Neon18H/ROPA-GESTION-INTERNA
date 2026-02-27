@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.accounts.models import Organization, User
 from apps.customers.models import Customer
-from apps.inventory.models import Product, Stock, Variant
+from apps.inventory.models import Product, ProductStock, Variant
 from apps.sales.models import Sale, SaleItem
 from apps.sales.utils import compute_sale_totals
 from apps.settings_app.models import StoreSettings
@@ -84,7 +84,7 @@ class POSCustomerModesTests(TestCase):
         )
         self.product = Product.objects.create(organization=self.org, sku='SKU-2', name='Pantalón')
         self.variant = Variant.objects.create(product=self.product, size='L', color='Negro', price=Decimal('90.00'), default_sale_price=Decimal('90.00'))
-        Stock.objects.create(variant=self.variant, quantity=15)
+        ProductStock.objects.create(organization=self.org, product=self.product, qty=15)
         self.customer = Customer.objects.create(organization=self.org, name='Cliente Existente')
 
     def _payload(self, **overrides):
@@ -126,6 +126,7 @@ class POSCustomerModesTests(TestCase):
         sale = Sale.objects.latest('id')
         self.assertEqual(sale.customer_id, self.customer.id)
         self.assertEqual(sale.organization_id, self.org.id)
+        self.assertEqual(ProductStock.objects.get(organization=self.org, product=self.product).qty, 13)
 
     def test_pos_manual_unit_price_override_is_persisted(self):
         self.client.force_login(self.user)

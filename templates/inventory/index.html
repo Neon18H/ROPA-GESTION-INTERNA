@@ -68,7 +68,7 @@
       </thead>
       <tbody>
       {% for v in variants %}
-        {% with qty=v.stock.quantity|default:0 min=v.stock.min_alert|default:3 %}
+        {% with qty=v.product.stock.qty|default:0 min=0 %}
         <tr>
           <td class="d-none d-md-table-cell">
             {% if v.image %}
@@ -93,8 +93,8 @@
             {% elif qty <= min %}<span class="badge rounded-pill text-bg-warning">Bajo · {{ qty }}</span>
             {% else %}<span class="badge rounded-pill text-bg-success">OK · {{ qty }}</span>{% endif %}
           </td>
-          <td>{{ v.stock.last_cost|default:0|money }}</td>
-          <td>{{ v.stock.avg_cost|default:0|money }}</td>
+          <td>{{ v.product.stock.last_cost|default:0|money }}</td>
+          <td>{{ v.product.stock.avg_cost|default:0|money }}</td>
           <td class="text-end">
             <a href="{% url 'inventory:product_update' v.product.id %}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Editar"><i class="bi bi-pencil"></i></a>
             <a href="{% url 'inventory:stock_in' v.id %}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Ingreso"><i class="bi bi-plus-square"></i></a>
