@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from apps.accounts.models import Organization, User
 from apps.customers.models import Customer
-from apps.inventory.models import Product, ProductStock, Variant
+from apps.inventory.models import KardexEntry, Product, ProductStock, Stock, Variant
 from apps.sales.models import Sale, SaleItem
 from apps.sales.utils import compute_sale_totals
 from apps.settings_app.models import StoreSettings
@@ -85,6 +85,7 @@ class POSCustomerModesTests(TestCase):
         self.product = Product.objects.create(organization=self.org, sku='SKU-2', name='Pantalón')
         self.variant = Variant.objects.create(product=self.product, size='L', color='Negro', price=Decimal('90.00'), default_sale_price=Decimal('90.00'))
         ProductStock.objects.create(organization=self.org, product=self.product, qty=15)
+        Stock.objects.create(variant=self.variant, quantity=15)
         self.customer = Customer.objects.create(organization=self.org, name='Cliente Existente')
 
     def _payload(self, **overrides):
@@ -126,7 +127,7 @@ class POSCustomerModesTests(TestCase):
         sale = Sale.objects.latest('id')
         self.assertEqual(sale.customer_id, self.customer.id)
         self.assertEqual(sale.organization_id, self.org.id)
-        self.assertEqual(ProductStock.objects.get(organization=self.org, product=self.product).qty, 13)
+        self.assertEqual(Stock.objects.get(variant=self.variant).quantity, 13)
 
     def test_pos_manual_unit_price_override_is_persisted(self):
         self.client.force_login(self.user)
@@ -167,3 +168,80 @@ class POSCustomerModesTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'El nombre del cliente es obligatorio.')
+
+
+class POSVariantStockIsolationTests(TestCase):
+    databases = {'default', 'settings_db'}
+
+    def setUp(self):
+        self.org = Organization.objects.create(name='Org Variant', nit='903')
+        self.user = User.objects.create_user(
+            username='pos-variant-admin',
+            password='pass1234',
+            organization=self.org,
+            role=User.Role.ADMIN,
+        )
+        self.customer = Customer.objects.create(organization=self.org, name='Cliente Variantes')
+        self.product = Product.objects.create(
+            organization=self.org,
+            sku='SKU-3',
+            name='Chaqueta',
+            suggested_price=Decimal('300000.00'),
+        )
+        self.variant_hombre = Variant.objects.create(
+            product=self.product,
+            size='M',
+            color='Negro',
+            gender=Variant.Gender.HOMBRE,
+            default_sale_price=Decimal('300000.00'),
+        )
+        self.variant_mujer = Variant.objects.create(
+            product=self.product,
+            size='M',
+            color='Negro',
+            gender=Variant.Gender.MUJER,
+            default_sale_price=Decimal('300000.00'),
+        )
+        Stock.objects.create(variant=self.variant_hombre, quantity=10, avg_cost=Decimal('120000.00'))
+        Stock.objects.create(variant=self.variant_mujer, quantity=10, avg_cost=Decimal('120000.00'))
+
+    def _payload_for_variant(self, variant):
+        return {
+            'customer_mode': 'existing',
+            'customer': str(self.customer.pk),
+            'payment_method': 'CASH',
+            'items-TOTAL_FORMS': '1',
+            'items-INITIAL_FORMS': '0',
+            'items-MIN_NUM_FORMS': '0',
+            'items-MAX_NUM_FORMS': '1000',
+            'items-0-variant': str(variant.pk),
+            'items-0-quantity': '1',
+            'items-0-unit_price': '300000.00',
+            'items-0-tax_rate': '0',
+            'items-0-discount': '0',
+        }
+
+    def test_stock_out_only_affects_sold_variant(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse('sales:pos'), data=self._payload_for_variant(self.variant_hombre))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Stock.objects.get(variant=self.variant_hombre).quantity, 9)
+        self.assertEqual(Stock.objects.get(variant=self.variant_mujer).quantity, 10)
+        sale = Sale.objects.latest('id')
+        kardex = KardexEntry.objects.filter(organization=self.org, reference=f'SALE:{sale.id}')
+        self.assertEqual(kardex.count(), 1)
+        self.assertEqual(kardex.first().variant_id, self.variant_hombre.id)
+
+    def test_stock_out_remains_independent_on_second_sale(self):
+        self.client.force_login(self.user)
+
+        self.client.post(reverse('sales:pos'), data=self._payload_for_variant(self.variant_hombre))
+        response = self.client.post(reverse('sales:pos'), data=self._payload_for_variant(self.variant_mujer))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Stock.objects.get(variant=self.variant_hombre).quantity, 9)
+        self.assertEqual(Stock.objects.get(variant=self.variant_mujer).quantity, 9)
+        self.assertEqual(KardexEntry.objects.filter(organization=self.org, variant=self.variant_hombre).count(), 1)
+        self.assertEqual(KardexEntry.objects.filter(organization=self.org, variant=self.variant_mujer).count(), 1)
