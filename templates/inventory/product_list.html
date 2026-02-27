@@ -1,44 +1,41 @@
 {% extends 'base.html' %}
 {% load media %}
-{% block title %}Inventario · ERP Cloud{% endblock %}
+{% block title %}Productos{% endblock %}
 {% block page_title %}Inventario de productos{% endblock %}
-{% block breadcrumbs %}
-<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">Inicio</a></li>
-<li class="breadcrumb-item active">Inventario</li>
+{% block breadcrumbs %}<li class="breadcrumb-item active">Productos</li>{% endblock %}
+{% block page_actions %}
+<div class="d-flex gap-2">
+  <button class="btn btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#filterCanvas"><i class="bi bi-funnel me-1"></i>Filtros</button>
+  <a href="{% url 'inventory:product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo producto</a>
+</div>
 {% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3">
-  <button class="btn btn-outline-light" data-bs-toggle="offcanvas" data-bs-target="#filterCanvas"><i class="fa-solid fa-sliders me-2"></i>Filtros</button>
-  <a href="{% url 'inventory:product_create' %}" class="btn btn-primary"><i class="fa-solid fa-plus me-2"></i>Nuevo producto</a>
-</div>
-
-<div class="card glass-card">
-  <div class="card-body table-responsive">
-    <table id="productsTable" class="table table-hover align-middle mb-0 data-table-saas">
-      <thead><tr><th class="d-none d-md-table-cell">Foto</th><th>SKU</th><th>Producto</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
-      <tbody>
-      {% for p in object_list %}
-      {% with stock=p.total_stock|default:0 %}
-      <tr>
-        <td class="d-none d-md-table-cell">
-          {% if p.image %}
-            <img src="{% media_url p.image %}" alt="{{ p.name }}" class="rounded shadow-sm" style="width: 56px; height: 56px; object-fit: cover;">
-          {% else %}
-            <div class="border rounded bg-light text-muted d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
-              <i class="bi bi-image"></i>
-            </div>
-          {% endif %}
-        </td>
-        <td>{{ p.sku }}</td><td>{{ p.name }}</td><td>{{ p.category.name|default:'-' }}</td><td>{{ p.brand.name|default:'-' }}</td><td>{{ stock }}</td>
-        <td>{% if stock <= 3 %}<span class="badge bg-danger-subtle text-danger">Bajo</span>{% elif stock <= 8 %}<span class="badge bg-warning-subtle text-warning">Medio</span>{% else %}<span class="badge bg-success-subtle text-success">Óptimo</span>{% endif %}</td>
-        <td><a href="{% url 'inventory:inventory' %}" class="btn btn-sm btn-outline-info"><i class="fa-solid fa-screwdriver-wrench me-1"></i>Ajuste rápido</a></td>
-      </tr>
-      {% endwith %}
-      {% empty %}
-      <tr><td colspan="8" class="text-center py-5"><i class="fa-regular fa-folder-open fa-2x mb-2 d-block"></i>No hay productos cargados todavía.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+{% url 'inventory:product_create' as product_create_url %}
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 enterprise-table">
+        <thead><tr><th class="d-none d-md-table-cell">Foto</th><th>SKU</th><th>Producto</th><th>Categoría</th><th>Marca</th><th>Stock</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+        {% for p in object_list %}
+        {% with stock=p.total_stock|default:0 %}
+        <tr>
+          <td class="d-none d-md-table-cell">{% if p.image %}<img src="{% media_url p.image %}" alt="{{ p.name }}" class="rounded" style="width:56px;height:56px;object-fit:cover;">{% else %}<div class="border rounded bg-light d-flex align-items-center justify-content-center" style="width:56px;height:56px;"><i class="bi bi-image"></i></div>{% endif %}</td>
+          <td>{{ p.sku }}</td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.category.name|default:'-' }}</td>
+          <td>{{ p.brand.name|default:'-' }}</td>
+          <td>{{ stock }}</td>
+          <td>{% if stock <= 3 %}<span class="badge bg-danger-subtle text-danger">Bajo</span>{% elif stock <= 8 %}<span class="badge bg-warning-subtle text-warning">Medio</span>{% else %}<span class="badge bg-success-subtle text-success">Óptimo</span>{% endif %}</td>
+          <td><a href="{% url 'inventory:product_update' p.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square"></i></a></td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+          <tr><td colspan="8" class="py-5">{% include 'partials/_empty_state.html' with title='Sin productos' message='Crea el primer producto para visualizar inventario.' action_url=product_create_url action_label='Nuevo producto' %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -49,7 +46,7 @@
       <div><label class="form-label">Categoría</label><select name="category" class="form-select"><option value="">Todas</option>{% for category in categories %}<option value="{{ category.id }}" {% if selected_category == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></div>
       <div><label class="form-label">Marca</label><select name="brand" class="form-select"><option value="">Todas</option>{% for brand in brands %}<option value="{{ brand.id }}" {% if selected_brand == brand.id|stringformat:'s' %}selected{% endif %}>{{ brand.name }}</option>{% endfor %}</select></div>
       <div class="form-check"><input class="form-check-input" type="checkbox" value="1" name="low_stock" id="lowStock" {% if low_stock %}checked{% endif %}><label class="form-check-label" for="lowStock">Solo stock bajo</label></div>
-      <button class="btn btn-primary"><i class="fa-solid fa-filter me-2"></i>Aplicar</button>
+      <button class="btn btn-primary">Aplicar</button>
     </form>
   </div>
 </div>

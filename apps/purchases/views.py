@@ -1,4 +1,5 @@
 from decimal import Decimal
+import logging
 
 from django.contrib import messages
 from django.db import IntegrityError, transaction
@@ -17,6 +18,8 @@ from .forms import ManualVariantForm, PurchaseItemFormSet, PurchaseOrderForm, Su
 from .models import PurchaseItem, PurchaseOrder, Supplier, SupplierVariant
 from .services import receive_purchase
 
+logger = logging.getLogger(__name__)
+
 
 class PurchaseListView(RoleRequiredMixin, ListView):
     model = PurchaseOrder
@@ -32,82 +35,87 @@ def purchase_create_view(request):
     org = request.user.organization
     supplier_id = request.POST.get('supplier') if request.method == 'POST' else None
     show_all = request.POST.get('show_all_variants') == 'on'
-    if request.method == 'POST':
-        form = PurchaseOrderForm(request.POST, organization=org)
-        supplier_id = form.data.get('supplier')
-        show_all = form.data.get('show_all_variants') == 'on'
-        formset = PurchaseItemFormSet(
-            request.POST,
-            form_kwargs={'organization': org, 'supplier_id': supplier_id, 'show_all': show_all},
-            prefix='items',
+
+    try:
+        if request.method == 'POST':
+            form = PurchaseOrderForm(request.POST, organization=org)
+            supplier_id = form.data.get('supplier')
+            show_all = form.data.get('show_all_variants') == 'on'
+            formset = PurchaseItemFormSet(
+                request.POST,
+                form_kwargs={'organization': org, 'supplier_id': supplier_id, 'show_all': show_all},
+                prefix='items',
+            )
+            if form.is_valid() and formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        next_number = (PurchaseOrder.objects.filter(organization=org).aggregate(m=Max('number'))['m'] or 0) + 1
+                        purchase = form.save(commit=False)
+                        purchase.organization = org
+                        purchase.created_by = request.user
+                        purchase.number = next_number
+                        purchase.status = PurchaseOrder.Status.DRAFT
+                        purchase.save()
+
+                        subtotal = Decimal('0.00')
+                        for item_form in formset:
+                            if not item_form.cleaned_data or item_form.cleaned_data.get('DELETE'):
+                                continue
+                            qty = item_form.cleaned_data['qty']
+                            unit_cost = item_form.cleaned_data['unit_cost']
+                            variant = item_form.cleaned_data['variant']
+                            line_total = Decimal(qty) * unit_cost
+                            subtotal += line_total
+                            PurchaseItem.objects.create(
+                                purchase=purchase,
+                                variant=variant,
+                                qty=qty,
+                                unit_cost=unit_cost,
+                                line_total=line_total,
+                            )
+
+                            SupplierVariant.objects.update_or_create(
+                                organization=org,
+                                supplier=purchase.supplier,
+                                variant=variant,
+                                defaults={'last_purchase_cost': unit_cost, 'is_active': True},
+                            )
+
+                        purchase.subtotal = subtotal
+                        purchase.total = subtotal
+                        purchase.save(update_fields=['subtotal', 'total'])
+                        receive_purchase(purchase, request.user)
+                except IntegrityError:
+                    form.add_error(None, 'No se pudo guardar la orden. Verifique los datos e intente de nuevo.')
+                else:
+                    messages.success(request, 'Orden de compra creada y recibida. Inventario actualizado.')
+                    return redirect('purchases:detail', pk=purchase.pk)
+        else:
+            form = PurchaseOrderForm(organization=org)
+            formset = PurchaseItemFormSet(
+                form_kwargs={'organization': org, 'supplier_id': supplier_id, 'show_all': show_all},
+                prefix='items',
+            )
+
+        manual_variant_form = ManualVariantForm(request=request, organization=org)
+        settings_obj = StoreSettings.objects.filter(organization_id=org.id).first()
+        return render(
+            request,
+            'purchases/order_form.html',
+            {
+                'form': form,
+                'formset': formset,
+                'categories': Category.objects.filter(organization=org).order_by('name'),
+                'brands': Brand.objects.filter(organization=org).order_by('name'),
+                'sizes': (settings_obj.sizes if settings_obj else []),
+                'colors': (settings_obj.colors if settings_obj else []),
+                'gender_choices': Variant.Gender.choices,
+                'manual_variant_form': manual_variant_form,
+            },
         )
-        if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    next_number = (PurchaseOrder.objects.filter(organization=org).aggregate(m=Max('number'))['m'] or 0) + 1
-                    purchase = form.save(commit=False)
-                    purchase.organization = org
-                    purchase.created_by = request.user
-                    purchase.number = next_number
-                    purchase.status = PurchaseOrder.Status.DRAFT
-                    purchase.save()
-
-                    subtotal = Decimal('0.00')
-                    for item_form in formset:
-                        if not item_form.cleaned_data or item_form.cleaned_data.get('DELETE'):
-                            continue
-                        qty = item_form.cleaned_data['qty']
-                        unit_cost = item_form.cleaned_data['unit_cost']
-                        variant = item_form.cleaned_data['variant']
-                        line_total = Decimal(qty) * unit_cost
-                        subtotal += line_total
-                        PurchaseItem.objects.create(
-                            purchase=purchase,
-                            variant=variant,
-                            qty=qty,
-                            unit_cost=unit_cost,
-                            line_total=line_total,
-                        )
-
-                        SupplierVariant.objects.update_or_create(
-                            organization=org,
-                            supplier=purchase.supplier,
-                            variant=variant,
-                            defaults={'last_purchase_cost': unit_cost, 'is_active': True},
-                        )
-
-                    purchase.subtotal = subtotal
-                    purchase.total = subtotal
-                    purchase.save(update_fields=['subtotal', 'total'])
-                    receive_purchase(purchase, request.user)
-            except IntegrityError:
-                form.add_error(None, 'No se pudo guardar la orden. Verifique los datos e intente de nuevo.')
-            else:
-                messages.success(request, 'Orden de compra creada y recibida. Inventario actualizado.')
-                return redirect('purchases:detail', pk=purchase.pk)
-    else:
-        form = PurchaseOrderForm(organization=org)
-        formset = PurchaseItemFormSet(
-            form_kwargs={'organization': org, 'supplier_id': supplier_id, 'show_all': show_all},
-            prefix='items',
-        )
-
-    manual_variant_form = ManualVariantForm(request=request, organization=org)
-    settings_obj = StoreSettings.objects.filter(organization_id=org.id).first()
-    return render(
-        request,
-        'purchases/order_form.html',
-        {
-            'form': form,
-            'formset': formset,
-            'categories': Category.objects.filter(organization=org).order_by('name'),
-            'brands': Brand.objects.filter(organization=org).order_by('name'),
-            'sizes': (settings_obj.sizes if settings_obj else []),
-            'colors': (settings_obj.colors if settings_obj else []),
-            'gender_choices': Variant.Gender.choices,
-            'manual_variant_form': manual_variant_form,
-        },
-    )
+    except Exception:
+        logger.exception('purchase_create_view failed for organization_id=%s', getattr(request.user, 'organization_id', None))
+        raise
 
 
 @require_POST

@@ -27,19 +27,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-
-
-  document.querySelectorAll('table[data-enhance="simple"]').forEach((table) => {
-    table.classList.add('table-striped');
+  document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', () => {
+      form.querySelectorAll('button[type="submit"]').forEach((button) => {
+        if (button.dataset.noLoading === 'true') return;
+        button.disabled = true;
+        if (!button.dataset.originalHtml) {
+          button.dataset.originalHtml = button.innerHTML;
+        }
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Procesando...';
+      });
+    });
   });
 
-  const topbarSearch = document.querySelector('.topbar-search input[type="search"]');
-  if (topbarSearch) {
-    topbarSearch.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        topbarSearch.value = '';
-        topbarSearch.blur();
-      }
+  const confirmModalElement = document.getElementById('confirmActionModal');
+  if (confirmModalElement) {
+    const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalElement);
+    const confirmText = document.getElementById('confirmActionMessage');
+    const confirmAccept = document.getElementById('confirmActionAccept');
+
+    document.querySelectorAll('[data-confirm]').forEach((trigger) => {
+      trigger.addEventListener('click', (event) => {
+        event.preventDefault();
+        confirmText.textContent = trigger.dataset.confirm || '¿Deseas continuar?';
+
+        confirmAccept.onclick = () => {
+          if (trigger.tagName === 'A') {
+            window.location.href = trigger.href;
+          } else if (trigger.tagName === 'BUTTON') {
+            const targetForm = trigger.form || (trigger.dataset.confirmForm ? document.querySelector(trigger.dataset.confirmForm) : null);
+            if (targetForm) targetForm.submit();
+          }
+          confirmModal.hide();
+        };
+
+        confirmModal.show();
+      });
     });
   }
 

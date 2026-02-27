@@ -1,24 +1,30 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% block page_title %}Proveedores{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Proveedores</li>{% endblock %}
+{% block page_actions %}<a href="{% url 'purchases:supplier_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo proveedor</a>{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0">Proveedores</h4>
-  <a href="{% url 'purchases:supplier_create' %}" class="btn btn-dark btn-sm">Nuevo proveedor</a>
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 enterprise-table">
+        <thead><tr><th>Nombre</th><th>Contacto</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          {% for supplier in object_list %}
+            <tr>
+              <td class="fw-semibold">{{ supplier.name }}</td>
+              <td>{{ supplier.phone|default:'-' }}<br><small class="text-secondary">{{ supplier.email|default:'Sin email' }}</small></td>
+              <td>{% if supplier.is_active %}<span class="badge bg-success-subtle text-success">Activo</span>{% else %}<span class="badge bg-secondary-subtle text-secondary">Inactivo</span>{% endif %}</td>
+              <td class="text-nowrap">
+                <a href="{% url 'purchases:supplier_edit' supplier.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square"></i></a>
+                <a href="{% url 'purchases:supplier_delete' supplier.pk %}" class="btn btn-sm btn-outline-danger" data-confirm="¿Eliminar proveedor? Esta acción no se puede deshacer."><i class="bi bi-trash"></i></a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="py-5">{% include 'partials/_empty_state.html' with title='Sin proveedores' message='Registra proveedores para gestionar compras.' %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
-<div class="card"><div class="card-body">
-<table class="table table-sm">
-  <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Activo</th><th></th></tr></thead>
-  <tbody>
-    {% for s in object_list %}
-      <tr>
-        <td>{{ s.name }}</td><td>{{ s.email }}</td><td>{{ s.phone }}</td><td>{{ s.is_active|yesno:"Sí,No" }}</td>
-        <td class="text-end">
-          <a href="{% url 'purchases:supplier_edit' s.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
-          <a href="{% url 'purchases:supplier_delete' s.pk %}" class="btn btn-outline-danger btn-sm">Eliminar</a>
-        </td>
-      </tr>
-    {% empty %}<tr><td colspan="5" class="text-muted">No hay proveedores.</td></tr>{% endfor %}
-  </tbody>
-</table>
-</div></div>
 {% endblock %}

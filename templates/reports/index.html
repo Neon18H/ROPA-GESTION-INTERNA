@@ -1,11 +1,15 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% block page_title %}Reportes{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Reportes</li>{% endblock %}
 {% block content %}
-<div class="card p-3">
-  <h2>Reportes</h2>
-  <ul>
-    <li><a href="{% url 'reports:customers_xlsx' %}">Descargar Clientes (Excel)</a></li>
-    <li><a href="{% url 'reports:inventory_xlsx' %}">Descargar Inventario (Excel)</a></li>
-    <li><a href="{% url 'reports:finance_xlsx' %}">Descargar Finanzas (Excel)</a></li>
-  </ul>
+<div class="card">
+  <div class="card-body">
+    <h2 class="h5 mb-3">Exportaciones</h2>
+    <div class="list-group">
+      <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'reports:customers_xlsx' %}">Clientes <i class="bi bi-file-earmark-excel"></i></a>
+      <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'reports:inventory_xlsx' %}">Inventario <i class="bi bi-file-earmark-excel"></i></a>
+      <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'reports:finance_xlsx' %}">Finanzas <i class="bi bi-file-earmark-excel"></i></a>
+    </div>
+  </div>
 </div>
 {% endblock %}

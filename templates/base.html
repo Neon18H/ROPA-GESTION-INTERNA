@@ -44,6 +44,11 @@
         {% block content %}{% endblock %}
       </div>
     </main>
+
+    <footer class="app-footer border-top px-3 px-lg-4 py-3 small text-muted d-flex justify-content-between flex-wrap gap-2">
+      <span>© {% now "Y" %} ROPA Cloud</span>
+      <span>{{ request.user.organization.name|default:'Sin organización' }}</span>
+    </footer>
   </div>
 </div>
 
@@ -54,6 +59,22 @@
   </div>
   <div class="offcanvas-body p-0">
     {% include 'includes/sidebar.html' with menu_id='mobileSidebarMenu' %}
+  </div>
+</div>
+
+<div class="modal fade" id="confirmActionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar acción</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="confirmActionMessage">¿Deseas continuar?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmActionAccept">Confirmar</button>
+      </div>
+    </div>
   </div>
 </div>
 

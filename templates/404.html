@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block page_title %}Página no encontrada{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">404</li>{% endblock %}
 {% block content %}
-<div class="card"><div class="card-body text-center py-5"><h1 class="display-4 text-danger">404</h1><p>La página solicitada no existe.</p></div></div>
+<div class="card"><div class="card-body text-center py-5"><h1 class="display-4 text-danger">404</h1><p class="text-secondary">La página solicitada no existe.</p><a href="{% url 'dashboard:index' %}" class="btn btn-primary">Ir al inicio</a></div></div>
 {% endblock %}
