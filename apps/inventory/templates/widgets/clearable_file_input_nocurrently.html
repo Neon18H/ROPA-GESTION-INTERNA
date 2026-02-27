@@ -1,0 +1,7 @@
+{% if widget.is_initial and not widget.required %}
+  <div class="form-check mb-2">
+    <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}" class="form-check-input">
+    <label for="{{ widget.checkbox_id }}" class="form-check-label">{{ widget.clear_checkbox_label }}</label>
+  </div>
+{% endif %}
+<input type="file" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
