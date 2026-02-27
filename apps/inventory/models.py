@@ -42,6 +42,7 @@ class Product(OrganizationScopedModel):
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL)
     brand = models.ForeignKey(Brand, null=True, blank=True, on_delete=models.SET_NULL)
     description = models.TextField(blank=True)
+    suggested_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     image = models.ImageField(upload_to=product_image_upload_to, storage=get_media_storage, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 

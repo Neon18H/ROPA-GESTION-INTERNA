@@ -108,9 +108,7 @@ class ProductUpdateForm(forms.ModelForm):
         self.fields['category'].label_from_instance = lambda category: category.name
         self.fields['brand'].label_from_instance = lambda brand: brand.name
         if self.instance and self.instance.pk:
-            default_variant = self.instance.variant_set.order_by('id').first()
-            if default_variant:
-                self.fields['initial_sale_price'].initial = default_variant.default_sale_price
+            self.fields['initial_sale_price'].initial = self.instance.suggested_price
         self.fields['image'].widget = NoCurrentlyClearableFileInput()
         text_fields = ('sku', 'name', 'category', 'brand', 'description', 'image', 'initial_sale_price')
         for field_name in text_fields:
