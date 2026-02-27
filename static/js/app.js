@@ -1,45 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const path = window.location.pathname;
-
-  document.querySelectorAll('.sidebar-nav .nav-link').forEach((link) => {
-    const href = link.getAttribute('href');
-    if (!href) return;
-    if (path === href || (href !== '/' && path.startsWith(href))) {
-      link.classList.add('active');
-    }
-  });
-
-  if (typeof bootstrap === 'undefined') return;
-
-  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
-    bootstrap.Tooltip.getOrCreateInstance(el);
-  });
-
-  document.querySelectorAll('.toast').forEach((el) => {
-    bootstrap.Toast.getOrCreateInstance(el).show();
-  });
+  if (typeof bootstrap !== 'undefined') {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => bootstrap.Tooltip.getOrCreateInstance(el));
+    document.querySelectorAll('.toast').forEach((el) => bootstrap.Toast.getOrCreateInstance(el).show());
+  }
 
   const offcanvasElement = document.getElementById('mobileSidebar');
-  if (offcanvasElement) {
+  if (offcanvasElement && typeof bootstrap !== 'undefined') {
     const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasElement);
-    offcanvasElement.querySelectorAll('.nav-link').forEach((link) => {
-      link.addEventListener('click', () => offcanvas.hide());
+    offcanvasElement.querySelectorAll('.nav-link').forEach((link) => link.addEventListener('click', () => offcanvas.hide()));
+  }
+
+  const confirmModalEl = document.getElementById('confirmModal');
+  const confirmButton = document.getElementById('modalConfirmButton');
+  let pendingDeleteUrl = null;
+  if (confirmModalEl && confirmButton && typeof bootstrap !== 'undefined') {
+    const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalEl);
+    document.querySelectorAll('[data-confirm-delete]').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        pendingDeleteUrl = btn.getAttribute('href');
+        confirmModal.show();
+      });
+    });
+    confirmButton.addEventListener('click', () => {
+      if (pendingDeleteUrl) window.location.href = pendingDeleteUrl;
     });
   }
 
-
-
-  document.querySelectorAll('table[data-enhance="simple"]').forEach((table) => {
-    table.classList.add('table-striped');
+  document.querySelectorAll('[data-search-debounce]').forEach((input) => {
+    let timeout = null;
+    input.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        input.dispatchEvent(new CustomEvent('debounced:input', { bubbles: true }));
+      }, Number(input.dataset.searchDebounce || 300));
+    });
   });
-
-  const topbarSearch = document.querySelector('.topbar-search input[type="search"]');
-  if (topbarSearch) {
-    topbarSearch.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        topbarSearch.value = '';
-        topbarSearch.blur();
-      }
-    });
-  }
 });
