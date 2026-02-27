@@ -7,7 +7,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, models, transaction
-from django.db.models import F, Q, Sum
+from django.db.models import F, IntegerField, Min, Prefetch, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -15,6 +16,7 @@ from django.views.generic import CreateView, FormView, ListView, UpdateView
 
 from apps.common.mixins import RoleRequiredMixin, organization_required, role_required
 from apps.common.models import OrganizationScopedMixin
+from apps.settings_app.models import StoreSettings
 from .forms import (
     BrandForm,
     CategoryForm,
@@ -59,6 +61,76 @@ class ProductListView(RoleRequiredMixin, OrganizationScopedMixin, ListView):
         if low_stock:
             queryset = queryset.filter(Q(total_stock__lte=3) | Q(total_stock__isnull=True))
         return queryset
+
+
+class ProductGalleryView(RoleRequiredMixin, ListView):
+    model = Product
+    template_name = 'inventory/product_gallery.html'
+    context_object_name = 'products'
+    allowed_roles = ('ADMIN', 'BODEGA')
+
+    def get_queryset(self):
+        org = self.get_org()
+        if org is None:
+            raise PermissionDenied('No organization associated to current user.')
+
+        queryset = (
+            Product.objects.filter(organization=org, is_active=True)
+            .select_related('category', 'brand')
+            .prefetch_related(Prefetch('variant_set', queryset=Variant.objects.filter(is_active=True).select_related('stock')))
+            .annotate(
+                stock_total=Coalesce(
+                    Sum('variant__stock__quantity', filter=Q(variant__is_active=True)),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                min_alert=Coalesce(
+                    Min('variant__stock__min_alert', filter=Q(variant__is_active=True)),
+                    Value(self._low_stock_default()),
+                    output_field=IntegerField(),
+                ),
+                first_variant_id=Min('variant__id', filter=Q(variant__is_active=True)),
+            )
+            .order_by('name')
+        )
+
+        category_id = self.request.GET.get('category')
+        brand_id = self.request.GET.get('brand')
+        query = (self.request.GET.get('q') or '').strip()
+
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        if brand_id:
+            queryset = queryset.filter(brand_id=brand_id)
+        if query:
+            queryset = queryset.filter(Q(name__icontains=query) | Q(sku__icontains=query))
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        org = self.get_org()
+        context.update(
+            {
+                'categories': Category.objects.filter(organization=org).order_by('name'),
+                'brands': Brand.objects.filter(organization=org).order_by('name'),
+                'selected_category': self.request.GET.get('category', ''),
+                'selected_brand': self.request.GET.get('brand', ''),
+                'q': (self.request.GET.get('q') or '').strip(),
+                'default_min_alert': self._low_stock_default(),
+            }
+        )
+        return context
+
+    def _low_stock_default(self):
+        org = self.get_org()
+        if org is None:
+            return 3
+        return (
+            StoreSettings.objects.filter(organization_id=org.id)
+            .values_list('low_stock_default', flat=True)
+            .first()
+            or 3
+        )
 
 
 class ProductCreateView(RoleRequiredMixin, CreateView):
