@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Organization, User
-from apps.inventory.models import Product, Stock, Variant
+from apps.inventory.models import Product, ProductStock, Variant
 from apps.purchases.forms import ManualVariantForm
 from apps.purchases.models import PurchaseOrder, Supplier
 
@@ -17,7 +17,7 @@ class PurchaseFlowTests(TestCase):
         self.other_user = User.objects.create_user(username='pur2', password='pass1234', organization=self.other_org, role=User.Role.ADMIN)
         self.product = Product.objects.create(organization=self.org, sku='SKU-1', name='Prod 1')
         self.variant = Variant.objects.create(product=self.product, size='M', color='Negro', gender=Variant.Gender.UNISEX, price=100)
-        Stock.objects.create(variant=self.variant, quantity=2, avg_cost=Decimal('10.00'))
+        ProductStock.objects.create(organization=self.org, product=self.product, qty=2, avg_cost=Decimal('10.00'))
 
     def test_variant_str_label(self):
         label = str(self.variant)
@@ -55,8 +55,8 @@ class PurchaseFlowTests(TestCase):
         self.assertEqual(create_response.status_code, 302)
 
         order = PurchaseOrder.objects.get(organization=self.org)
-        stock = Stock.objects.get(variant=self.variant)
-        self.assertEqual(stock.quantity, 7)
+        stock = ProductStock.objects.get(organization=self.org, product=self.product)
+        self.assertEqual(stock.qty, 7)
         self.assertEqual(order.status, PurchaseOrder.Status.RECEIVED)
         self.assertEqual(stock.last_cost, Decimal('20.00'))
 

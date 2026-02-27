@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Organization, User
-from apps.inventory.models import Product, Stock, Variant
+from apps.inventory.models import Product, ProductStock, Variant
 
 
 class ProductUpdateViewTenantTests(TestCase):
@@ -30,7 +30,7 @@ class ProductUpdateViewTenantTests(TestCase):
             name='Producto original',
         )
         self.variant = Variant.objects.create(product=self.product, size='UNICA', color='UNICO', gender=Variant.Gender.UNISEX, price=10, default_sale_price=10)
-        Stock.objects.create(variant=self.variant, quantity=3)
+        ProductStock.objects.create(organization=self.organization, product=self.product, qty=3)
         self.client.force_login(self.user)
 
     def _payload(self):
@@ -104,10 +104,10 @@ class ProductUpdateViewTenantTests(TestCase):
         response = self.client.post(url, self._payload())
 
         self.assertEqual(response.status_code, 302)
-        self.variant.refresh_from_db()
-        self.assertEqual(self.variant.stock.quantity, 3)
+        stock = ProductStock.objects.get(organization=self.organization, product=self.product)
+        self.assertEqual(stock.qty, 3)
 
-    def test_add_variant_creates_stock_row(self):
+    def test_add_variant_keeps_single_product_stock_pool(self):
         url = reverse('inventory:product_update', kwargs={'pk': self.product.pk})
         payload = self._payload()
         payload.update(
@@ -126,5 +126,5 @@ class ProductUpdateViewTenantTests(TestCase):
         response = self.client.post(url, payload)
 
         self.assertEqual(response.status_code, 302)
-        new_variant = Variant.objects.get(product=self.product, barcode='BAR-NEW')
-        self.assertTrue(Stock.objects.filter(variant=new_variant).exists())
+        self.assertTrue(Variant.objects.filter(product=self.product, barcode='BAR-NEW').exists())
+        self.assertEqual(ProductStock.objects.filter(organization=self.organization, product=self.product).count(), 1)

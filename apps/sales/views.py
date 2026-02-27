@@ -9,7 +9,7 @@ from django.views.generic import DetailView, ListView
 
 from apps.common.mixins import RoleRequiredMixin, role_required
 from apps.customers.models import Customer
-from apps.inventory.models import KardexEntry, Stock, Variant
+from apps.inventory.models import KardexEntry, ProductStock, Variant
 from apps.settings_app.models import StoreSettings
 from .forms import SaleForm, SaleItemFormSet
 from .models import Payment, Sale, SaleItem
@@ -36,7 +36,7 @@ def pos_view(request):
     q = request.GET.get('q', '').strip()
 
     try:
-        variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product', 'stock')
+        variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product', 'product__stock')
         if q:
             variants = variants.filter(Q(product__sku__icontains=q) | Q(barcode__icontains=q) | Q(product__name__icontains=q))
 
@@ -70,8 +70,11 @@ def pos_view(request):
                 try:
                     with transaction.atomic():
                         for item in valid_items:
-                            stock = Stock.objects.select_for_update().filter(variant=item['variant']).first()
-                            current_stock = stock.quantity if stock else 0
+                            stock = ProductStock.objects.select_for_update().filter(
+                                organization=org,
+                                product=item['variant'].product,
+                            ).first()
+                            current_stock = stock.qty if stock else 0
                             if item['qty'] > current_stock:
                                 messages.error(request, f"Stock insuficiente para {item['variant'].product.name} {item['variant'].size}/{item['variant'].color}.")
                                 transaction.set_rollback(True)
@@ -131,7 +134,7 @@ def pos_view(request):
                                 discount=item['discount'],
                                 line_total=line_total,
                             )
-                            Stock.objects.filter(variant=item['variant']).update(quantity=F('quantity') - item['qty'])
+                            ProductStock.objects.filter(organization=org, product=item['variant'].product).update(qty=F('qty') - item['qty'])
                             KardexEntry.objects.create(
                                 organization=org,
                                 variant=item['variant'],

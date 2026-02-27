@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Organization, User
-from apps.inventory.models import Product, Stock, Variant
+from apps.inventory.models import Product, ProductStock, Variant
 
 
 class InventoryViewTests(TestCase):
@@ -18,11 +18,11 @@ class InventoryViewTests(TestCase):
 
         product = Product.objects.create(organization=self.organization, sku='SKU-INV', name='Polo')
         self.variant = Variant.objects.create(product=product, size='M', color='Rojo', gender=Variant.Gender.HOMBRE)
-        Stock.objects.create(variant=self.variant, quantity=5)
+        ProductStock.objects.create(organization=self.organization, product=product, qty=5)
 
         other_product = Product.objects.create(organization=self.other_organization, sku='SKU-OTH', name='Other')
         other_variant = Variant.objects.create(product=other_product, size='L', color='Negro', gender=Variant.Gender.MUJER)
-        Stock.objects.create(variant=other_variant, quantity=99)
+        ProductStock.objects.create(organization=self.other_organization, product=other_product, qty=99)
 
         self.client.force_login(self.user)
 

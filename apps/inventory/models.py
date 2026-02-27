@@ -78,8 +78,18 @@ class Variant(models.Model):
 
     @property
     def stock_qty(self):
-        stock = getattr(self, 'stock', None)
-        return getattr(stock, 'quantity', 0) or 0
+        product_stock = getattr(getattr(self, 'product', None), 'stock', None)
+        return getattr(product_stock, 'qty', 0) or 0
+
+
+class ProductStock(OrganizationScopedModel):
+    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name='stock')
+    qty = models.IntegerField(default=0)
+    last_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    avg_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['organization', 'product'], name='uq_org_product_stock')]
 
 
 class Stock(models.Model):
@@ -114,11 +124,15 @@ class KardexEntry(OrganizationScopedModel):
         return self.qty
 
     def apply_to_stock(self):
-        stock, _ = Stock.objects.get_or_create(variant=self.variant)
+        stock, _ = ProductStock.objects.get_or_create(
+            organization=self.organization,
+            product=self.variant.product,
+            defaults={'qty': 0},
+        )
         if self.type == self.Type.IN:
-            stock.quantity = F('quantity') + self.qty
+            stock.qty = F('qty') + self.qty
         elif self.type == self.Type.OUT:
-            stock.quantity = F('quantity') - self.qty
+            stock.qty = F('qty') - self.qty
         else:
-            stock.quantity = F('quantity') + self.qty
-        stock.save(update_fields=['quantity'])
+            stock.qty = F('qty') + self.qty
+        stock.save(update_fields=['qty'])

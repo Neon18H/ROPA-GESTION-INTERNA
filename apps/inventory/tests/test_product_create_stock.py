@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Organization, User
-from apps.inventory.models import Product, Stock
+from apps.inventory.models import Product, ProductStock
 
 
 class ProductCreateInitialStockTests(TestCase):
@@ -16,7 +16,7 @@ class ProductCreateInitialStockTests(TestCase):
         )
         self.client.force_login(self.user)
 
-    def test_initial_qty_is_applied_to_each_created_variant(self):
+    def test_initial_qty_is_applied_to_product_pool_stock(self):
         response = self.client.post(
             reverse('inventory:product_create'),
             {
@@ -44,9 +44,5 @@ class ProductCreateInitialStockTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         product = Product.objects.get(organization=self.organization, sku='SKU-STOCK-1')
-        quantities = list(
-            Stock.objects.filter(variant__product=product)
-            .order_by('variant_id')
-            .values_list('quantity', flat=True)
-        )
-        self.assertEqual(quantities, [10, 10])
+        stock = ProductStock.objects.get(organization=self.organization, product=product)
+        self.assertEqual(stock.qty, 10)

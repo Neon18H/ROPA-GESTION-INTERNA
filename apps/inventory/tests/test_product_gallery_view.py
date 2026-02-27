@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import Organization, User
-from apps.inventory.models import Brand, Category, Product, Stock, Variant
+from apps.inventory.models import Brand, Category, Product, ProductStock, Variant
 from apps.settings_app.models import StoreSettings
 
 
@@ -29,7 +29,7 @@ class ProductGalleryViewTests(TestCase):
             is_active=True,
         )
         variant = Variant.objects.create(product=self.product, size='M', color='Azul', is_active=True)
-        Stock.objects.create(variant=variant, quantity=2, min_alert=3)
+        ProductStock.objects.create(organization=self.organization, product=self.product, qty=2)
 
         other_category = Category.objects.create(organization=self.other_organization, name='Pantalones')
         other_brand = Brand.objects.create(organization=self.other_organization, name='Marca X')
@@ -42,7 +42,7 @@ class ProductGalleryViewTests(TestCase):
             is_active=True,
         )
         other_variant = Variant.objects.create(product=other_product, size='L', color='Negro', is_active=True)
-        Stock.objects.create(variant=other_variant, quantity=99, min_alert=1)
+        ProductStock.objects.create(organization=self.other_organization, product=other_product, qty=99)
 
         self.client.force_login(self.user)
 
@@ -50,9 +50,9 @@ class ProductGalleryViewTests(TestCase):
         response = self.client.get(reverse('inventory:product_gallery'))
 
         self.assertEqual(response.status_code, 200)
-        products = list(response.context['products'])
-        self.assertEqual(len(products), 1)
-        self.assertEqual(products[0].id, self.product.id)
+        variants = list(response.context['variants'])
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].product_id, self.product.id)
 
     def test_gallery_filters_category_brand_and_query(self):
         response = self.client.get(
@@ -61,6 +61,6 @@ class ProductGalleryViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        products = list(response.context['products'])
-        self.assertEqual(len(products), 1)
-        self.assertEqual(products[0].stock_total, 2)
+        variants = list(response.context['variants'])
+        self.assertEqual(len(variants), 1)
+        self.assertEqual(variants[0].stock_qty, 2)
