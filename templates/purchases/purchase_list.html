@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load money %}
+{% load tz %}
 {% block page_title %}Compras{% endblock %}
 {% block breadcrumbs %}<li class="breadcrumb-item active">Compras</li>{% endblock %}
 {% block page_actions %}<a href="{% url 'purchases:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva compra</a>{% endblock %}
@@ -16,7 +17,7 @@
               <td>{{ purchase.supplier }}</td>
               <td><span class="badge text-bg-light border">{{ purchase.get_status_display }}</span></td>
               <td>{{ purchase.total|money }}</td>
-              <td>{{ purchase.created_at|date:'d/m/Y H:i' }}</td>
+              <td>{{ purchase.created_at|localtime|date:'d/m/Y H:i' }}</td>
               <td><a href="{% url 'purchases:detail' purchase.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
             </tr>
           {% empty %}

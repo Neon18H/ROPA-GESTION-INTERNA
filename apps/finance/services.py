@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
@@ -22,16 +22,18 @@ RANGE_DAYS = {'today': 1, '7d': 7, '30d': 30, '90d': 90}
 
 def get_date_range(range_key):
     key = range_key if range_key in RANGE_DAYS else '30d'
-    now = timezone.localtime()
+    now = timezone.localtime(timezone.now())
+    current_tz = timezone.get_current_timezone()
     if key == 'today':
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start = timezone.make_aware(datetime.combine(now.date(), time.min), current_tz)
     else:
-        start = (now - timedelta(days=RANGE_DAYS[key] - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        start_day = (now - timedelta(days=RANGE_DAYS[key] - 1)).date()
+        start = timezone.make_aware(datetime.combine(start_day, time.min), current_tz)
     return key, start, now
 
 
 def get_sales_metrics(org, start, end):
-    sales_qs = Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__gte=start, created_at__lte=end)
+    sales_qs = Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__range=(start, end))
     ingresos = sales_qs.aggregate(total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2))['total']
     cogs_expr = ExpressionWrapper(
         F('qty') * Coalesce(F('variant__stock__avg_cost'), F('variant__stock__last_cost'), F('variant__cost'), ZERO_DEC, output_field=DECIMAL_12_2),
@@ -47,8 +49,7 @@ def get_purchase_metrics(org, start, end):
     purchases = PurchaseOrder.objects.filter(
         organization=org,
         status=PurchaseOrder.Status.RECEIVED,
-        created_at__gte=start,
-        created_at__lte=end,
+        created_at__range=(start, end),
     )
     total = purchases.aggregate(total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2))['total']
     return {'gastos': total or Decimal('0.00'), 'purchase_count': purchases.count()}
@@ -66,7 +67,7 @@ def get_inventory_metrics(org):
 
 def get_top_selling_products(org, start, end, limit=10):
     return list(
-        SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__gte=start, sale__created_at__lte=end)
+        SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__range=(start, end))
         .values('variant__product__name', 'variant__product__sku')
         .annotate(total_qty=Coalesce(Sum('qty', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD))
         .order_by('-total_qty')[:limit]
@@ -74,7 +75,7 @@ def get_top_selling_products(org, start, end, limit=10):
 
 
 def get_unsold_products(org, days=90, limit=10):
-    cutoff = timezone.localtime() - timedelta(days=days)
+    cutoff = timezone.localtime(timezone.now()) - timedelta(days=days)
     sold_ids = SaleItem.objects.filter(sale__organization=org, sale__status=Sale.Status.PAID, sale__created_at__gte=cutoff).values_list('variant__product_id', flat=True)
     return list(Product.objects.filter(organization=org, is_active=True).exclude(id__in=sold_ids).order_by('name')[:limit])
 
@@ -84,8 +85,7 @@ def get_top_purchased_products(org, start, end, limit=10):
         PurchaseItem.objects.filter(
             purchase__organization=org,
             purchase__status=PurchaseOrder.Status.RECEIVED,
-            purchase__created_at__gte=start,
-            purchase__created_at__lte=end,
+            purchase__created_at__range=(start, end),
         )
         .values('variant__product__name')
         .annotate(total_qty=Coalesce(Sum('qty', output_field=INT_FIELD), ZERO_INT, output_field=INT_FIELD))
@@ -98,8 +98,7 @@ def get_top_suppliers(org, start, end, limit=10):
         PurchaseOrder.objects.filter(
             organization=org,
             status=PurchaseOrder.Status.RECEIVED,
-            created_at__gte=start,
-            created_at__lte=end,
+            created_at__range=(start, end),
         )
         .values('supplier__name')
         .annotate(total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2))
@@ -109,15 +108,15 @@ def get_top_suppliers(org, start, end, limit=10):
 
 def get_income_vs_expense_chart(org, start, end):
     sales_rows = list(
-        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__gte=start, created_at__lte=end)
-        .annotate(day=TruncDate('created_at'))
+        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__range=(start, end))
+        .annotate(day=TruncDate('created_at', tzinfo=timezone.get_current_timezone()))
         .values('day')
         .annotate(total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2))
         .order_by('day')
     )
     purchase_rows = list(
-        PurchaseOrder.objects.filter(organization=org, status=PurchaseOrder.Status.RECEIVED, created_at__gte=start, created_at__lte=end)
-        .annotate(day=TruncDate('created_at'))
+        PurchaseOrder.objects.filter(organization=org, status=PurchaseOrder.Status.RECEIVED, created_at__range=(start, end))
+        .annotate(day=TruncDate('created_at', tzinfo=timezone.get_current_timezone()))
         .values('day')
         .annotate(total=Coalesce(Sum('total', output_field=DECIMAL_12_2), ZERO_DEC, output_field=DECIMAL_12_2))
         .order_by('day')
@@ -210,7 +209,7 @@ def get_finance_data(org, range_key):
 
 def build_sales_csv(org, start, end):
     rows = (
-        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__gte=start, created_at__lte=end)
+        Sale.objects.filter(organization=org, status=Sale.Status.PAID, created_at__range=(start, end))
         .select_related('customer')
         .order_by('-created_at')
     )
@@ -218,13 +217,13 @@ def build_sales_csv(org, start, end):
     writer = csv.writer(output)
     writer.writerow(['Fecha', 'Número', 'Cliente', 'Total'])
     for sale in rows:
-        writer.writerow([sale.created_at.strftime('%Y-%m-%d %H:%M'), sale.number, sale.customer.name if sale.customer else 'Sin cliente', sale.total])
+        writer.writerow([timezone.localtime(sale.created_at).strftime('%Y-%m-%d %H:%M'), sale.number, sale.customer.name if sale.customer else 'Sin cliente', sale.total])
     return output.getvalue()
 
 
 def build_purchase_csv(org, start, end):
     rows = (
-        PurchaseOrder.objects.filter(organization=org, status=PurchaseOrder.Status.RECEIVED, created_at__gte=start, created_at__lte=end)
+        PurchaseOrder.objects.filter(organization=org, status=PurchaseOrder.Status.RECEIVED, created_at__range=(start, end))
         .select_related('supplier')
         .order_by('-created_at')
     )
@@ -232,5 +231,5 @@ def build_purchase_csv(org, start, end):
     writer = csv.writer(output)
     writer.writerow(['Fecha', 'Número', 'Proveedor', 'Total'])
     for purchase in rows:
-        writer.writerow([purchase.created_at.strftime('%Y-%m-%d %H:%M'), purchase.number, purchase.supplier.name, purchase.total])
+        writer.writerow([timezone.localtime(purchase.created_at).strftime('%Y-%m-%d %H:%M'), purchase.number, purchase.supplier.name, purchase.total])
     return output.getvalue()
