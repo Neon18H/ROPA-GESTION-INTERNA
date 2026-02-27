@@ -14,6 +14,10 @@ class Customer(OrganizationScopedModel):
     type = models.CharField(max_length=15, choices=Type.choices, default=Type.NORMAL)
     notes = models.TextField(blank=True)
 
+    def __str__(self):
+        name = (getattr(self, 'name', '') or '').strip()
+        return name or f'Customer #{getattr(self, "pk", "")}'
+
 
 class Loyalty(models.Model):
     customer = models.OneToOneField(Customer, on_delete=models.CASCADE)

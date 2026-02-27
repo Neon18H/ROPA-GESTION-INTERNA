@@ -18,14 +18,16 @@ class Category(OrganizationScopedModel):
     name = models.CharField(max_length=120)
 
     def __str__(self):
-        return self.name
+        name = (getattr(self, 'name', '') or '').strip()
+        return name or f'Category #{getattr(self, "pk", "")}'
 
 
 class Brand(OrganizationScopedModel):
     name = models.CharField(max_length=120)
 
     def __str__(self):
-        return self.name
+        name = (getattr(self, 'name', '') or '').strip()
+        return name or f'Brand #{getattr(self, "pk", "")}'
 
 
 class Product(OrganizationScopedModel):
@@ -41,7 +43,11 @@ class Product(OrganizationScopedModel):
         constraints = [models.UniqueConstraint(fields=['organization', 'sku'], name='uq_org_sku')]
 
     def __str__(self):
-        return f'{self.sku} - {self.name}'
+        sku = (getattr(self, 'sku', '') or '').strip()
+        name = (getattr(self, 'name', '') or '').strip()
+        if sku and name:
+            return f'{sku} - {name}'
+        return sku or name or f'Product #{getattr(self, "pk", "")}'
 
 
 class Variant(models.Model):
@@ -60,16 +66,28 @@ class Variant(models.Model):
     cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
-        base = f'{self.product.sku} - {self.product.name}'
+        product = getattr(self, 'product', None)
+        product_sku = (getattr(product, 'sku', '') or '').strip()
+        product_name = (getattr(product, 'name', '') or '').strip()
+        if product_sku and product_name:
+            base = f'{product_sku} - {product_name}'
+        else:
+            base = product_sku or product_name or f'Variant #{getattr(self, "pk", "")}'
+
         extras = []
-        if self.size:
-            extras.append(f'Talla: {self.size}')
-        if self.color:
-            extras.append(f'Color: {self.color}')
-        if self.gender:
-            extras.append(f'Género: {self.gender}')
-        if self.barcode:
-            extras.append(f'Barcode: {self.barcode}')
+        size = (getattr(self, 'size', '') or '').strip()
+        color = (getattr(self, 'color', '') or '').strip()
+        gender = (getattr(self, 'gender', '') or '').strip()
+        barcode = (getattr(self, 'barcode', '') or '').strip()
+
+        if size:
+            extras.append(f'Talla: {size}')
+        if color:
+            extras.append(f'Color: {color}')
+        if gender:
+            extras.append(f'Género: {gender}')
+        if barcode:
+            extras.append(f'Barcode: {barcode}')
         return base + (f" | {' | '.join(extras)}" if extras else '')
 
 
