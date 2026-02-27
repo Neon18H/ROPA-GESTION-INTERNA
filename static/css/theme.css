@@ -14,7 +14,6 @@
 * { font-family: 'Inter', sans-serif; }
 
 body.app-body { background: var(--bg); color: var(--text); }
-
 .app-shell { min-height: 100vh; display: flex; }
 
 .app-sidebar {
@@ -27,7 +26,7 @@ body.app-body { background: var(--bg); color: var(--text); }
   overflow-y: auto;
 }
 
-.app-content-wrapper { min-width: 0; flex: 1; display: flex; flex-direction: column; height: 100vh; }
+.app-content-wrapper { min-width: 0; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
 .app-main { flex: 1; overflow-y: auto; }
 
 .app-topbar {
@@ -36,6 +35,8 @@ body.app-body { background: var(--bg); color: var(--text); }
   backdrop-filter: saturate(180%) blur(6px);
   z-index: 1020;
 }
+
+.app-footer { background: rgba(255, 255, 255, 0.8); }
 
 .sidebar-brand { display: flex; align-items: center; gap: .75rem; }
 .brand-logo {
@@ -85,6 +86,7 @@ body.app-body { background: var(--bg); color: var(--text); }
   padding-bottom: .7rem;
 }
 .enterprise-table td { padding-top: .68rem; padding-bottom: .68rem; vertical-align: middle; }
+.table-sticky-header thead th { position: sticky; top: 0; z-index: 1; }
 
 .badge-stock { display: inline-flex; align-items: center; gap: .35rem; padding: .38rem .58rem; font-weight: 600; }
 .badge-stock-critical { background: #fee2e2; color: #b91c1c; }
@@ -93,6 +95,15 @@ body.app-body { background: var(--bg); color: var(--text); }
 
 .split-panel-card { min-height: 100%; }
 .empty-state { max-width: 520px; margin: 0 auto; }
+.empty-state-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .offcanvas { background: var(--sidebar); color: #fff; }
 .app-offcanvas-header { border-bottom: 1px solid rgba(148, 163, 184, .2); }
 

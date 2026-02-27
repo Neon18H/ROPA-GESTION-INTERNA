@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
@@ -12,6 +14,8 @@ from apps.settings_app.models import StoreSettings
 from .forms import SaleForm, SaleItemFormSet
 from .models import Payment, Sale, SaleItem
 from .utils import D, compute_sale_totals
+
+logger = logging.getLogger(__name__)
 
 
 class SaleListView(RoleRequiredMixin, ListView):
@@ -30,122 +34,127 @@ class SaleListView(RoleRequiredMixin, ListView):
 def pos_view(request):
     org = request.user.organization
     q = request.GET.get('q', '').strip()
-    variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product', 'stock')
-    if q:
-        variants = variants.filter(Q(product__sku__icontains=q) | Q(barcode__icontains=q) | Q(product__name__icontains=q))
 
-    if request.method == 'POST':
-        form = SaleForm(request.POST, organization=org)
-        formset = SaleItemFormSet(request.POST, prefix='items', form_kwargs={'organization': org})
+    try:
+        variants = Variant.objects.filter(product__organization=org, is_active=True).select_related('product', 'stock')
+        if q:
+            variants = variants.filter(Q(product__sku__icontains=q) | Q(barcode__icontains=q) | Q(product__name__icontains=q))
 
-        valid_items = []
-        if formset.is_valid():
-            for item_form in formset:
-                variant = item_form.cleaned_data.get('variant')
-                if not variant:
-                    continue
-                qty = item_form.cleaned_data.get('quantity')
-                unit_price = item_form.cleaned_data.get('unit_price')
-                if not qty or unit_price is None:
-                    continue
-                valid_items.append(
-                    {
-                        'variant': variant,
-                        'qty': qty,
-                        'unit_price': unit_price,
-                        'tax_rate': item_form.cleaned_data.get('tax_rate'),
-                        'discount': item_form.cleaned_data.get('discount') or D('0.00'),
-                    }
-                )
+        if request.method == 'POST':
+            form = SaleForm(request.POST, organization=org)
+            formset = SaleItemFormSet(request.POST, prefix='items', form_kwargs={'organization': org})
 
-        if not valid_items:
-            messages.error(request, 'Debe seleccionar al menos un producto variante válido.')
-        elif form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    for item in valid_items:
-                        stock = Stock.objects.select_for_update().filter(variant=item['variant']).first()
-                        current_stock = stock.quantity if stock else 0
-                        if item['qty'] > current_stock:
-                            messages.error(request, f"Stock insuficiente para {item['variant'].product.name} {item['variant'].size}/{item['variant'].color}.")
-                            transaction.set_rollback(True)
-                            return redirect('sales:pos')
-
-                    customer = form.cleaned_data['customer']
-                    if not customer:
-                        customer = Customer.objects.create(
-                            organization=org,
-                            name=form.cleaned_data['customer_name'],
-                            phone=form.cleaned_data['customer_phone'],
-                            email=form.cleaned_data['customer_email'],
-                            document_id=form.cleaned_data['customer_document_id'],
-                            type=form.cleaned_data.get('customer_type') or Customer.Type.NORMAL,
-                            notes=form.cleaned_data['customer_notes'],
-                        )
-
-                    next_number = (Sale.objects.filter(organization=org).aggregate(m=Max('number'))['m'] or 0) + 1
-                    sale = Sale.objects.create(
-                        organization=org,
-                        number=next_number,
-                        customer=customer,
-                        payment_method=form.cleaned_data['payment_method'],
-                        created_by=request.user,
-                        status=Sale.Status.PAID,
+            valid_items = []
+            if formset.is_valid():
+                for item_form in formset:
+                    variant = item_form.cleaned_data.get('variant')
+                    if not variant:
+                        continue
+                    qty = item_form.cleaned_data.get('quantity')
+                    unit_price = item_form.cleaned_data.get('unit_price')
+                    if not qty or unit_price is None:
+                        continue
+                    valid_items.append(
+                        {
+                            'variant': variant,
+                            'qty': qty,
+                            'unit_price': unit_price,
+                            'tax_rate': item_form.cleaned_data.get('tax_rate'),
+                            'discount': item_form.cleaned_data.get('discount') or D('0.00'),
+                        }
                     )
 
-                    org_settings = StoreSettings.objects.using('settings_db').filter(organization_id=org.id).first()
-                    default_vat_rate = org_settings.billing_vat_rate if org_settings else D('0.00')
+            if not valid_items:
+                messages.error(request, 'Debe seleccionar al menos un producto variante válido.')
+            elif form.is_valid() and formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        for item in valid_items:
+                            stock = Stock.objects.select_for_update().filter(variant=item['variant']).first()
+                            current_stock = stock.quantity if stock else 0
+                            if item['qty'] > current_stock:
+                                messages.error(request, f"Stock insuficiente para {item['variant'].product.name} {item['variant'].size}/{item['variant'].color}.")
+                                transaction.set_rollback(True)
+                                return redirect('sales:pos')
 
-                    class _ItemPayload:
-                        def __init__(self, raw):
-                            self.unit_price = raw['unit_price']
-                            self.qty = raw['qty']
-                            self.tax_rate = raw.get('tax_rate')
+                        customer = form.cleaned_data['customer']
+                        if not customer:
+                            customer = Customer.objects.create(
+                                organization=org,
+                                name=form.cleaned_data['customer_name'],
+                                phone=form.cleaned_data['customer_phone'],
+                                email=form.cleaned_data['customer_email'],
+                                document_id=form.cleaned_data['customer_document_id'],
+                                type=form.cleaned_data.get('customer_type') or Customer.Type.NORMAL,
+                                notes=form.cleaned_data['customer_notes'],
+                            )
 
-                    computed = compute_sale_totals([_ItemPayload(item) for item in valid_items], default_vat_rate)
-
-                    discount_total = D('0.00')
-                    for idx, item in enumerate(valid_items):
-                        line = computed['lines'][idx]
-                        line_total = line['line_total'] - item['discount']
-                        discount_total += item['discount']
-                        SaleItem.objects.create(
-                            sale=sale,
-                            variant=item['variant'],
-                            qty=item['qty'],
-                            unit_price=item['unit_price'],
-                            tax_rate=item.get('tax_rate'),
-                            discount=item['discount'],
-                            line_total=line_total,
-                        )
-                        Stock.objects.filter(variant=item['variant']).update(quantity=F('quantity') - item['qty'])
-                        KardexEntry.objects.create(
+                        next_number = (Sale.objects.filter(organization=org).aggregate(m=Max('number'))['m'] or 0) + 1
+                        sale = Sale.objects.create(
                             organization=org,
-                            variant=item['variant'],
-                            type=KardexEntry.Type.OUT,
-                            qty=item['qty'],
-                            unit_cost=0,
-                            note='Venta',
-                            reference=f'sale:{sale.id}',
+                            number=next_number,
+                            customer=customer,
+                            payment_method=form.cleaned_data['payment_method'],
                             created_by=request.user,
+                            status=Sale.Status.PAID,
                         )
 
-                    sale.subtotal = computed['subtotal']
-                    sale.tax_total = computed['tax_total']
-                    sale.discount_total = discount_total
-                    sale.total = computed['total'] - discount_total
-                    sale.save(update_fields=['subtotal', 'tax_total', 'discount_total', 'total'])
-                    Payment.objects.create(sale=sale, method=sale.payment_method, amount=sale.total, reference='POS')
-            except IntegrityError:
-                messages.error(request, 'No fue posible registrar la venta por conflicto de datos. Intenta de nuevo.')
-                return redirect('sales:pos')
-            messages.success(request, f'Venta #{sale.number} registrada.')
-            return redirect('sales:receipt', pk=sale.pk)
-    else:
-        form = SaleForm(organization=org)
-        formset = SaleItemFormSet(prefix='items', form_kwargs={'organization': org})
+                        org_settings = StoreSettings.objects.using('settings_db').filter(organization_id=org.id).first()
+                        default_vat_rate = org_settings.billing_vat_rate if org_settings else D('0.00')
 
-    return render(request, 'sales/pos.html', {'form': form, 'items_formset': formset, 'variants': variants[:20], 'query': q})
+                        class _ItemPayload:
+                            def __init__(self, raw):
+                                self.unit_price = raw['unit_price']
+                                self.qty = raw['qty']
+                                self.tax_rate = raw.get('tax_rate')
+
+                        computed = compute_sale_totals([_ItemPayload(item) for item in valid_items], default_vat_rate)
+
+                        discount_total = D('0.00')
+                        for idx, item in enumerate(valid_items):
+                            line = computed['lines'][idx]
+                            line_total = line['line_total'] - item['discount']
+                            discount_total += item['discount']
+                            SaleItem.objects.create(
+                                sale=sale,
+                                variant=item['variant'],
+                                qty=item['qty'],
+                                unit_price=item['unit_price'],
+                                tax_rate=item.get('tax_rate'),
+                                discount=item['discount'],
+                                line_total=line_total,
+                            )
+                            Stock.objects.filter(variant=item['variant']).update(quantity=F('quantity') - item['qty'])
+                            KardexEntry.objects.create(
+                                organization=org,
+                                variant=item['variant'],
+                                type=KardexEntry.Type.OUT,
+                                qty=item['qty'],
+                                unit_cost=0,
+                                note='Venta',
+                                reference=f'sale:{sale.id}',
+                                created_by=request.user,
+                            )
+
+                        sale.subtotal = computed['subtotal']
+                        sale.tax_total = computed['tax_total']
+                        sale.discount_total = discount_total
+                        sale.total = computed['total'] - discount_total
+                        sale.save(update_fields=['subtotal', 'tax_total', 'discount_total', 'total'])
+                        Payment.objects.create(sale=sale, method=sale.payment_method, amount=sale.total, reference='POS')
+                except IntegrityError:
+                    messages.error(request, 'No fue posible registrar la venta por conflicto de datos. Intenta de nuevo.')
+                    return redirect('sales:pos')
+                messages.success(request, f'Venta #{sale.number} registrada.')
+                return redirect('sales:receipt', pk=sale.pk)
+        else:
+            form = SaleForm(organization=org)
+            formset = SaleItemFormSet(prefix='items', form_kwargs={'organization': org})
+
+        return render(request, 'sales/pos.html', {'form': form, 'items_formset': formset, 'variants': variants[:20], 'query': q})
+    except Exception:
+        logger.exception('pos_view failed for organization_id=%s', getattr(request.user, 'organization_id', None))
+        raise
 
 
 class SaleReceiptView(RoleRequiredMixin, DetailView):

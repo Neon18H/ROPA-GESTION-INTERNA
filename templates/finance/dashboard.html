@@ -1,53 +1,20 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load static %}
 {% load money %}
 {% block page_title %}Finanzas{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Finanzas</li>{% endblock %}
 {% block content %}
 <div class="row g-3 mb-3">
-  <div class="col-md-3"><div class="card p-3"><small>Ingresos hoy</small><h4>{{ ingresos_hoy|money }}</h4></div></div>
-  <div class="col-md-3"><div class="card p-3"><small>Ingresos mes</small><h4>{{ ingresos_mes|money }}</h4></div></div>
-  <div class="col-md-3"><div class="card p-3"><small>Gastos operativos mes</small><h4>{{ gastos_operativos_mes|money }}</h4><small class="text-muted">Compras: {{ compras_mes|money }}</small></div></div>
-  <div class="col-md-3"><div class="card p-3"><small>Margen estimado mes</small><h4>{{ margen_estimado_mes|money }}</h4><small class="text-muted">Costo estimado ventas: {{ costo_estimado_mes|money }}</small></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Ingresos hoy</small><h4>{{ ingresos_hoy|money }}</h4></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Ingresos mes</small><h4>{{ ingresos_mes|money }}</h4></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Gastos operativos mes</small><h4>{{ gastos_operativos_mes|money }}</h4></div></div>
+  <div class="col-md-6 col-xl-3"><div class="card p-3"><small>Margen estimado mes</small><h4>{{ margen_estimado_mes|money }}</h4></div></div>
 </div>
 <div class="card p-3 mb-3"><strong>Inventario valorizado:</strong> {{ inventario_valorizado|money }}</div>
-
-<div class="row g-3 mb-3">
+<div class="row g-3">
   <div class="col-lg-6"><div class="card p-3"><h6>Ventas últimos 30 días</h6><canvas id="salesChart" height="120"></canvas></div></div>
   <div class="col-lg-6"><div class="card p-3"><h6>Top 5 productos por ingresos</h6><canvas id="topProductsChart" height="120"></canvas></div></div>
 </div>
-<div class="row g-3 mb-3">
-  <div class="col-lg-6"><div class="card p-3"><h6>Egresos por categoría + compras</h6><canvas id="expenseChart" height="120"></canvas></div></div>
-</div>
-
-<div class="row g-3">
-  <div class="col-lg-6">
-    <div class="card p-3">
-      <h6>Top productos por ingresos</h6>
-      <table class="table table-sm">
-        <thead><tr><th>SKU</th><th>Producto</th><th>Cantidad</th><th>Ingresos</th></tr></thead>
-        <tbody>{% for row in top_productos %}<tr><td>{{ row.variant__product__sku }}</td><td>{{ row.variant__product__name }}</td><td>{{ row.total_qty }}</td><td>{{ row.revenue|money }}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted">Sin ventas.</td></tr>{% endfor %}</tbody>
-      </table>
-      <small class="text-muted">Los ingresos usan el precio guardado en venta (unit_price); en su ausencia toma el precio actual de la variante.</small>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card p-3 mb-3">
-      <h6>Baja rotación (30 días sin ventas)</h6>
-      <table class="table table-sm">
-        <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th>Stock</th></tr></thead>
-        <tbody>{% for stock in baja_rotacion %}<tr><td>{{ stock.variant.product.sku }}</td><td>{{ stock.variant.product.name }}</td><td>{{ stock.variant.size }}/{{ stock.variant.color }}</td><td>{{ stock.quantity }}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted">Sin hallazgos.</td></tr>{% endfor %}</tbody>
-      </table>
-    </div>
-    <div class="card p-3">
-      <h6>Compras por proveedor</h6>
-      <table class="table table-sm">
-        <thead><tr><th>Proveedor</th><th>Total comprado</th></tr></thead>
-        <tbody>{% for row in compras_proveedor %}<tr><td>{{ row.purchase__supplier__name }}</td><td>{{ row.total|money }}</td></tr>{% empty %}<tr><td colspan="2" class="text-muted">Sin compras recibidas.</td></tr>{% endfor %}</tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 {{ chart_sales_labels|json_script:"chart-sales-labels" }}
 {{ chart_sales_values|json_script:"chart-sales-values" }}
 {{ chart_top_labels|json_script:"chart-top-labels" }}
@@ -55,7 +22,4 @@
 {{ chart_expense_labels|json_script:"chart-expense-labels" }}
 {{ chart_expense_values|json_script:"chart-expense-values" }}
 {% endblock %}
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'js/finance_dashboard.js' %}"></script>
-{% endblock %}
+{% block extra_js %}<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="{% static 'js/finance_dashboard.js' %}"></script>{% endblock %}

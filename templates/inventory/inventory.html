@@ -1,39 +1,32 @@
 {% extends 'base.html' %}
-{% block title %}Inventario & Kardex{% endblock %}
+{% block page_title %}Inventario operativo{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Inventario</li>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'inventory:products' %}" class="btn btn-primary"><i class="bi bi-box-seam me-1"></i>Ver productos</a>
+{% endblock %}
 {% block content %}
-<div class="card mb-4">
+<div class="card mb-3">
   <div class="card-body">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
-      <div>
-        <h1 class="h5 mb-1">Inventario operativo</h1>
-        <p class="text-secondary mb-0">Controla entradas y salidas de stock por variante.</p>
-      </div>
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+      <p class="text-secondary mb-0">Controla entradas y salidas de stock por variante.</p>
       <span class="badge text-bg-light border"><i class="bi bi-exclamation-triangle me-1 text-danger"></i>Bajo stock: {{ low_stock_count }}</span>
     </div>
-
-    <form method="post" class="row g-2 align-items-end">
+    <form method="post" class="row g-3 align-items-end">
       {% csrf_token %}
       <div class="col-12 col-lg-4">{{ movement_form.variant }}</div>
       <div class="col-6 col-lg-2">{{ movement_form.qty }}</div>
       <div class="col-6 col-lg-2">{{ movement_form.movement_type }}</div>
       <div class="col-12 col-lg-2">{{ movement_form.unit_cost }}</div>
-      <div class="col-12 col-lg-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-check2-circle me-2"></i>Aplicar</button></div>
+      <div class="col-12 col-lg-2"><button class="btn btn-primary w-100" type="submit">Aplicar</button></div>
     </form>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-body">
+  <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table enterprise-table align-middle mb-0">
-        <thead>
-        <tr>
-          <th>SKU</th>
-          <th>Producto</th>
-          <th>Variante</th>
-          <th class="text-end">Stock</th>
-        </tr>
-        </thead>
+      <table class="table table-hover align-middle mb-0 enterprise-table">
+        <thead><tr><th>SKU</th><th>Producto</th><th>Variante</th><th class="text-end">Stock</th></tr></thead>
         <tbody>
         {% for v in variants %}
           {% with qty=v.stock.quantity|default:0 %}
@@ -42,18 +35,14 @@
             <td>{{ v.product.name }}</td>
             <td>{{ v.size }} / {{ v.color }}</td>
             <td class="text-end">
-              {% if qty <= 3 %}
-                <span class="badge badge-stock badge-stock-critical"><i class="bi bi-exclamation-octagon"></i>{{ qty }}</span>
-              {% elif qty <= 8 %}
-                <span class="badge badge-stock badge-stock-low"><i class="bi bi-exclamation-circle"></i>{{ qty }}</span>
-              {% else %}
-                <span class="badge badge-stock badge-stock-ok"><i class="bi bi-check-circle"></i>{{ qty }}</span>
-              {% endif %}
+              {% if qty <= 3 %}<span class="badge badge-stock badge-stock-critical">{{ qty }}</span>
+              {% elif qty <= 8 %}<span class="badge badge-stock badge-stock-low">{{ qty }}</span>
+              {% else %}<span class="badge badge-stock badge-stock-ok">{{ qty }}</span>{% endif %}
             </td>
           </tr>
           {% endwith %}
         {% empty %}
-          <tr><td colspan="4" class="text-center py-5 text-secondary">No hay variantes registradas aún.</td></tr>
+          <tr><td colspan="4" class="py-5">{% include 'partials/_empty_state.html' with title='No hay variantes registradas' message='Crea productos y variantes para iniciar control de inventario.' %}</td></tr>
         {% endfor %}
         </tbody>
       </table>

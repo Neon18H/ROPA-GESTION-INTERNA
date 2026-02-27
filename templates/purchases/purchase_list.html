@@ -1,12 +1,30 @@
 {% extends 'base.html' %}
 {% load money %}
 {% block page_title %}Compras{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Compras</li>{% endblock %}
+{% block page_actions %}<a href="{% url 'purchases:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva compra</a>{% endblock %}
 {% block content %}
 <div class="card">
-  <div class="card-header d-flex justify-content-between align-items-center"><h3 class="card-title mb-0">Órdenes de compra</h3><a href="{% url 'purchases:create' %}" class="btn btn-primary btn-sm">Nueva OC</a></div>
-  <div class="card-body">
-    <p class="text-muted">Método de costos usado al recibir: <strong>último costo</strong>.</p>
-    <table class="table" id="purchaseTable"><thead><tr><th>#</th><th>Proveedor</th><th>Estado</th><th>Total</th><th></th></tr></thead><tbody>{% for p in object_list %}<tr><td>{{ p.number }}</td><td>{{ p.supplier.name }}</td><td><span class="badge {% if p.status == 'RECEIVED' %}bg-success{% else %}bg-secondary{% endif %}">{{ p.status }}</span></td><td>{{ p.total|money }}</td><td><a class="btn btn-outline-primary btn-sm" href="{% url 'purchases:detail' p.pk %}">Detalle</a></td></tr>{% endfor %}</tbody></table>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 enterprise-table">
+        <thead><tr><th>#</th><th>Proveedor</th><th>Estado</th><th>Total</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>
+          {% for purchase in object_list %}
+            <tr>
+              <td class="fw-semibold">{{ purchase.number }}</td>
+              <td>{{ purchase.supplier }}</td>
+              <td><span class="badge text-bg-light border">{{ purchase.get_status_display }}</span></td>
+              <td>{{ purchase.total|money }}</td>
+              <td>{{ purchase.created_at|date:'d/m/Y H:i' }}</td>
+              <td><a href="{% url 'purchases:detail' purchase.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="py-5">{% include 'partials/_empty_state.html' with title='No hay compras registradas' message='Crea tu primera orden de compra.' %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

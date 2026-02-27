@@ -1,56 +1,30 @@
 {% extends 'base.html' %}
+{% block page_title %}Clientes{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">Clientes</li>{% endblock %}
+{% block page_actions %}{% endblock %}
 {% block content %}
-<div class="card p-3">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0">Clientes</h5>
-  </div>
-
-  <form method="get" class="row g-2 mb-3">
-    <div class="col-md-6">
-      <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Buscar por nombre, email o teléfono">
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 enterprise-table">
+        <thead><tr><th>Nombre</th><th>Contacto</th><th>Tipo</th><th></th></tr></thead>
+        <tbody>
+          {% for customer in object_list %}
+            <tr>
+              <td class="fw-semibold">{{ customer.name }}</td>
+              <td>
+                <div>{{ customer.phone|default:'-' }}</div>
+                <small class="text-secondary">{{ customer.email|default:'Sin email' }}</small>
+              </td>
+              <td><span class="badge text-bg-light border">{{ customer.get_type_display }}</span></td>
+              <td><a href="{% url 'customers:edit' customer.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square"></i></a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="py-5">{% include 'partials/_empty_state.html' with title='Sin clientes' message='Registra clientes para agilizar ventas y reportes.' %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    <div class="col-auto">
-      <button class="btn btn-dark">Buscar</button>
-    </div>
-  </form>
-
-  <div class="table-responsive">
-    <table class="table table-striped align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Documento / Teléfono</th>
-          <th>Email</th>
-          <th>Total compras</th>
-          <th>Última compra</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for customer in object_list %}
-        <tr>
-          <td>{{ customer.name }}</td>
-          <td>{{ customer.document_id|default:'-' }} / {{ customer.phone|default:'-' }}</td>
-          <td>{{ customer.email|default:'-' }}</td>
-          <td>{{ customer.total_purchases|default:0 }}</td>
-          <td>{% if customer.last_purchase %}{{ customer.last_purchase|date:'Y-m-d H:i' }}{% else %}-{% endif %}</td>
-          <td><a class="btn btn-sm btn-outline-primary" href="{% url 'customers:edit' customer.pk %}">Editar</a></td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="6" class="text-center py-4">No hay clientes para mostrar.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </div>
-
-  {% if is_paginated %}
-  <div class="d-flex justify-content-end gap-2 mt-3">
-    {% if page_obj.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
-    <span class="btn btn-sm btn-light disabled">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?q={{ q }}&page={{ page_obj.next_page_number }}">Siguiente</a>{% endif %}
-  </div>
-  {% endif %}
 </div>
 {% endblock %}

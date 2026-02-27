@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block page_title %}Error interno{% endblock %}
+{% block breadcrumbs %}<li class="breadcrumb-item active">500</li>{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <h2 class="display-6 text-danger">Ocurrió un error inesperado</h2>
+    <p class="text-secondary">Estamos trabajando para resolverlo. Intenta nuevamente en unos minutos.</p>
+    <a href="{% url 'dashboard:index' %}" class="btn btn-primary">Volver al inicio</a>
+  </div>
+</div>
+{% endblock %}
